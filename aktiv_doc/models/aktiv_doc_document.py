@@ -66,12 +66,14 @@ class AktivDocDocument(models.Model):
     _order = "adoc_changed desc, id desc"
     _check_company_auto = True
 
-    _adoc_uniq = models.Constraint(
+    # Odoo 18: `_sql_constraints` (у 19 — `models.Constraint`).
+    _sql_constraints = [(
+        "adoc_uniq",
         "UNIQUE(company_id, adoc_id)",
         "Цей документ Active Doc уже є в базі для цієї організації. Кожен документ "
         "сервісу має в Odoo рівно один запис — інакше стани розійдуться. Відкрийте "
         "наявний запис у «Документообіг» замість того, щоб створювати новий.",
-    )
+    )]
 
     name = fields.Char("Документ", required=True, tracking=True,
                        help="Назва документа, як її бачить контрагент в Active Doc.")
