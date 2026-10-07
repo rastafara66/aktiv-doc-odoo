@@ -186,18 +186,20 @@ def login(browser, db, base=URL):
     ctx = browser.new_context(locale="uk-UA", viewport={"width": 1400, "height": 1300})
     page = ctx.new_page()
     PAGES.append(page)
-    # `login=` у адресі — і форма видима вже з сервера: в Odoo 18 вона рендериться з
-    # `d-none`, і показує її лише JS перемикача користувачів.
-    page.goto("%s/web/login?db=%s&login=admin" % (base, db))
-    try:
-        page.locator("input[name=login]").wait_for(state="visible", timeout=60000)
-    except Exception:
-        page.screenshot(path=str(SECRETS / ("fail-login-%s.png" % db)))
-        raise
-    page.fill("input[name=login]", "admin")
-    page.fill("input[name=password]", "admin")
-    page.click("button[type=submit]")
-    page.wait_for_url("**/odoo**", timeout=120000)
+    # Вхід — JSON-RPC-ом у контексті браузера (кука сесії спільна з його вкладками), а не
+    # формою: перевіряємо підпис, а не сторінку входу. Форма в Odoo 18 рендериться
+    # прихованою (її відкриває JS), і натискання «Вхід» на свіжій базі там двічі не
+    # надіслало нічого — прогін висів на сторінці входу.
+    reply = ctx.request.post(base + "/web/session/authenticate", data={
+        "jsonrpc": "2.0", "method": "call",
+        "params": {"db": db, "login": "admin", "password": "admin"}}, timeout=120000)
+    body = reply.json()
+    if body.get("error"):
+        raise RuntimeError("вхід у %s: %s" % (db, (body["error"].get("data") or {}).get("message")
+                                               or body["error"].get("message")))
+    page.goto(base + "/odoo")
+    # Перший захід у свіжу базу збирає ассети бекенда (у 18 — до пів хвилини).
+    page.locator(".o_main_navbar").wait_for(timeout=180000)
     return ctx, page
 
 
