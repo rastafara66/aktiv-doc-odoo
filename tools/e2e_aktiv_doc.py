@@ -120,9 +120,14 @@ class Session:
 def make_db(db):
     # Українська — як у всієї лінійки «Актив»: інакше кнопки Odoo англійські поруч
     # із нашими українськими, і знімки магазину виходять мішаниною мов.
+    # Без демо-даних: у 18 вони ставляться типово, і з демо-проводками Odoo вже не дає
+    # змінити валюту компанії. Прапорець різний: у 19 `--without-demo` — булевий
+    # («all» він читає як помилку), у 18 — список модулів, `=all`.
+    no_demo = "--without-demo" if SERIES == "19.0" else "--without-demo=all"
     subprocess.run(odoo_cmd("-d", db, "-i", "account,aktiv_doc", "--load-language=uk_UA",
-                            "--stop-after-init", "--log-level=warn"), check=True, env=odoo_env(),
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1800)
+                            no_demo, "--stop-after-init", "--log-level=warn"), check=True,
+                   env=odoo_env(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                   timeout=1800)
 
 
 def setup_db(db, org, code, key, other_org, other_code):
