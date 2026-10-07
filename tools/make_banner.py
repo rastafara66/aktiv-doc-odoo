@@ -28,7 +28,7 @@ WHITE = (250, 248, 255)
 ACCENT = (255, 210, 90)
 MUTED = (196, 188, 228)
 
-TITLE = "Aktiv Doc"
+TITLE = "Active Doc"
 SUBTITLE = "KEP e-signature inside Odoo \u00b7 Ukraine"
 DETAIL = "sign \u00b7 send \u00b7 incoming \u00b7 signed archive"
 

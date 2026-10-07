@@ -327,7 +327,7 @@ def build():
         '  </p>\n',
         '  <div class="oe_row oe_spaced">\n',
         '    <img src="banner_wide.png" style="max-width:100%;border-radius:10px;"\n',
-        '         alt="Aktiv Doc &#8212; sign with KEP and send without leaving Odoo"/>\n',
+        '         alt="Active Doc &#8212; sign with KEP and send without leaving Odoo"/>\n',
         '  </div>\n\n',
         half(EN, "en", values),
         half(UK, "uk", values),

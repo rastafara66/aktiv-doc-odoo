@@ -1,4 +1,4 @@
-# Aktiv Doc — KEP e-signature and document exchange for Odoo
+# Active Doc for Odoo — KEP e-signature and document exchange
 
 Sign invoices, acts and delivery notes with a Ukrainian qualified electronic
 signature (KEP) and send them to counterparties through
