@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Кожна організація бачить лише свої документи Active Doc. -->
+    <record id="aktiv_doc_document_company_rule" model="ir.rule">
+        <field name="name">Active Doc: документи своєї організації</field>
+        <field name="model_id" ref="model_aktiv_doc_document"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

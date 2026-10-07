@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="aktiv_doc_document_view_list" model="ir.ui.view">
+        <field name="name">aktiv.doc.document.list</field>
+        <field name="model">aktiv.doc.document</field>
+        <field name="arch" type="xml">
+            <list string="Документи Active Doc" create="false"
+                  decoration-muted="state == 'rejected'" decoration-success="state == 'done'"
+                  decoration-info="can_sign">
+                <header>
+                    <button name="action_sync_now" type="object" string="Оновити зараз"
+                            display="always" class="btn-secondary"
+                            help="Забрати з Active Doc вхідні документи й зміни стану, не чекаючи розкладу (він — кожні 5 хвилин)."/>
+                </header>
+                <field name="adoc_changed" string="Змінено"/>
+                <field name="direction"/>
+                <field name="name"/>
+                <field name="counterparty_name" string="Контрагент"/>
+                <field name="record_ref" optional="show"/>
+                <field name="state_label"/>
+                <field name="state" column_invisible="True"/>
+                <field name="can_sign" column_invisible="True"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="aktiv_doc_document_view_form" model="ir.ui.view">
+        <field name="name">aktiv.doc.document.form</field>
+        <field name="model">aktiv.doc.document</field>
+        <field name="arch" type="xml">
+            <form string="Документ Active Doc" create="false">
+                <header>
+                    <button name="action_sign" type="object" string="Підписати" class="btn-primary"
+                            invisible="not can_sign"
+                            help="Відкрити вікно підпису КЕП Active Doc тут же, в Odoo. Ключ і пароль бачить лише вікно підпису."/>
+                    <button name="action_send" type="object" string="Надіслати" class="btn-primary"
+                            invisible="direction != 'out' or state != 'signed'"
+                            help="Надіслати підписаний документ контрагенту: у кабінет Active Doc за кодом, а якщо кабінету немає — листом із посиланням."/>
+                    <button name="action_reject_wizard" type="object" string="Відхилити"
+                            invisible="direction != 'in' or state != 'sent'"
+                            help="Відмовитися підписувати вхідний документ — контрагент побачить причину."/>
+                    <button name="action_refresh" type="object" string="Оновити"
+                            help="Перепитати Active Doc про стан документа зараз."/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,signed,sent,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_record" type="object" class="oe_stat_button"
+                                icon="fa-file-text-o" invisible="not record_ref"
+                                help="Відкрити рахунок, акт чи накладну, з яких надіслано документ.">
+                            <span class="o_stat_text">Документ обліку</span>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="True"/></h1>
+                        <div class="text-muted"><field name="state_label"/></div>
+                    </div>
+                    <group>
+                        <group string="Документ">
+                            <field name="direction"/>
+                            <field name="record_ref"/>
+                            <field name="adoc_id"/>
+                            <field name="adoc_changed"/>
+                            <field name="attachment_id"/>
+                            <field name="archive_id" invisible="not archive_id"/>
+                            <field name="can_sign" invisible="True"/>
+                        </group>
+                        <group string="Контрагент">
+                            <field name="partner_id" readonly="True"/>
+                            <field name="counterparty_name"/>
+                            <field name="counterparty_code"/>
+                            <field name="counterparty_email" invisible="not counterparty_email"/>
+                            <field name="in_cabinet"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Підписи">
+                        <field name="signs_needed"/>
+                        <field name="signatures" nolabel="1" colspan="2"/>
+                        <field name="reject_reason" invisible="not reject_reason"/>
+                    </group>
+                    <group string="Службове" groups="base.group_no_one">
+                        <field name="file_name"/>
+                        <field name="sha256"/>
+                        <field name="external_ref"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="aktiv_doc_document_view_search" model="ir.ui.view">
+        <field name="name">aktiv.doc.document.search</field>
+        <field name="model">aktiv.doc.document</field>
+        <field name="arch" type="xml">
+            <search string="Документи Active Doc">
+                <field name="name"/>
+                <field name="counterparty_name"/>
+                <field name="counterparty_code"/>
+                <field name="partner_id"/>
+                <filter name="to_sign" string="Чекає мого підпису" domain="[('can_sign', '=', True)]"/>
+                <filter name="sent" string="Чекає контрагента" domain="[('state', '=', 'sent')]"/>
+                <filter name="done" string="Підписано обома" domain="[('state', '=', 'done')]"/>
+                <filter name="rejected" string="Відхилено" domain="[('state', '=', 'rejected')]"/>
+                <separator/>
+                <filter name="outgoing" string="Вихідні" domain="[('direction', '=', 'out')]"/>
+                <filter name="incoming" string="Вхідні" domain="[('direction', '=', 'in')]"/>
+                <filter name="by_state" string="Стан" context="{'group_by': 'state'}"/>
+                <filter name="by_partner" string="Контрагент" context="{'group_by': 'partner_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_aktiv_doc_outgoing" model="ir.actions.act_window">
+        <field name="name">Вихідні документи</field>
+        <field name="res_model">aktiv.doc.document</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('direction', '=', 'out')]</field>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Ще нічого не надсилали на підпис</p>
+            <p>Відкрийте проведений рахунок, акт чи накладну й натисніть «Надіслати на підпис»:
+               документ підписується КЕП тут же, в Odoo, і йде контрагенту — у його кабінет
+               Active Doc або листом із посиланням.</p>
+            <p>Кнопки немає? Адміністратор має вставити ключ API в Налаштуваннях:
+               Виставлення рахунків → Active Doc.</p>
+        </field>
+    </record>
+
+    <record id="action_aktiv_doc_incoming" model="ir.actions.act_window">
+        <field name="name">Вхідні документи</field>
+        <field name="res_model">aktiv.doc.document</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('direction', '=', 'in')]</field>
+        <field name="context">{'create': False, 'search_default_to_sign': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Вхідних документів немає</p>
+            <p>Документи, які контрагенти надіслали на код вашої організації в Active Doc,
+               з'являються тут самі кожні кілька хвилин; «Оновити зараз» забирає їх одразу.
+               Підписати чи відхилити — у картці документа.</p>
+        </field>
+    </record>
+
+</odoo>

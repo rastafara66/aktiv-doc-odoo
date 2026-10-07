@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_aktiv_doc" model="ir.ui.view">
+        <field name="name">res.config.settings.form.aktiv.doc</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='account']" position="inside">
+                <block title="Active Doc — підпис КЕП і обмін документами" name="aktiv_doc_setting_container">
+                    <setting string="Ключ API" groups="base.group_system"
+                             help="Ключ організації з кабінету Active Doc: «Організація» → «Ключі API». Там же вкажіть адресу цієї бази Odoo — лише з неї відкриватиметься вікно підпису.">
+                        <field name="aktiv_doc_key" password="True" placeholder="adk_…"/>
+                        <div class="mt-2 text-muted">
+                            Ключ зберігається лише тут і йде лише з сервера Odoo — у браузер він не потрапляє.
+                            Немає кабінету? Зареєструйтеся на https://doc.aktiv.in.ua — тариф «Безкоштовний» дає 20 вихідних документів на місяць, вхідні й підпис — без меж.
+                        </div>
+                        <div class="mt-2">
+                            <button name="action_aktiv_doc_check" type="object" string="Перевірити з'єднання"
+                                    class="btn-secondary btn-sm" icon="fa-plug"
+                                    help="Зберегти ключ і спитати Active Doc: яка організація, тариф, скільки документів надіслано цього місяця, чи відкриється вікно підпису з цієї бази."/>
+                        </div>
+                    </setting>
+                    <setting string="Вхідні з Active Doc"
+                             help="Документи, які контрагенти надіслали на код вашої організації, з'являються в «Документообіг → Вхідні» самі кожні 5 хвилин.">
+                        <field name="aktiv_doc_inbox"/>
+                    </setting>
+                    <setting string="Адреса Active Doc" groups="base.group_no_one"
+                             help="Змінювати не потрібно — лише для тестового сервера.">
+                        <field name="aktiv_doc_url"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

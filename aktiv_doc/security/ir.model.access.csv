@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_aktiv_doc_document_user,aktiv.doc.document.user,model_aktiv_doc_document,account.group_account_invoice,1,1,1,0
+access_aktiv_doc_document_manager,aktiv.doc.document.manager,model_aktiv_doc_document,account.group_account_manager,1,1,1,1
+access_aktiv_doc_send_user,aktiv.doc.send.user,model_aktiv_doc_send,account.group_account_invoice,1,1,1,1
+access_aktiv_doc_reject_user,aktiv.doc.reject.user,model_aktiv_doc_reject,account.group_account_invoice,1,1,1,1

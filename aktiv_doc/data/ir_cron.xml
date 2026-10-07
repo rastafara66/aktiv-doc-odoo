@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Вебхуків у API v1 немає свідомо: адреса бази клієнта не завжди доступна
+         ззовні. Тож зміни стану й вхідні забираємо опитуванням. -->
+    <record id="ir_cron_aktiv_doc_sync" model="ir.cron">
+        <field name="name">Active Doc: вхідні документи й зміни стану</field>
+        <field name="model_id" ref="model_aktiv_doc_document"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_sync()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

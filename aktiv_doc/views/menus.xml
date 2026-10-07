@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_aktiv_doc_root" name="Документообіг" parent="account.menu_finance"
+              sequence="6" groups="account.group_account_invoice"/>
+    <menuitem id="menu_aktiv_doc_incoming" name="Вхідні" parent="menu_aktiv_doc_root"
+              action="action_aktiv_doc_incoming" sequence="10"/>
+    <menuitem id="menu_aktiv_doc_outgoing" name="Вихідні" parent="menu_aktiv_doc_root"
+              action="action_aktiv_doc_outgoing" sequence="20"/>
+</odoo>

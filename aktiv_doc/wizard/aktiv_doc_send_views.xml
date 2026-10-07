@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="aktiv_doc_send_view_form" model="ir.ui.view">
+        <field name="name">aktiv.doc.send.form</field>
+        <field name="model">aktiv.doc.send</field>
+        <field name="arch" type="xml">
+            <form string="Надіслати на підпис">
+                <div class="alert alert-info" role="status">
+                    Після «Підписати» відкриється вікно підпису КЕП Active Doc — тут же, в Odoo.
+                    Ключ і пароль бачить лише вікно підпису. Підписаний документ надсилається
+                    кнопкою «Надіслати» в його картці.
+                </div>
+                <group>
+                    <group string="Документ">
+                        <field name="res_model" invisible="True"/>
+                        <field name="res_id" invisible="True"/>
+                        <field name="record_name"/>
+                        <field name="report_id" options="{'no_create': True, 'no_open': True}"/>
+                        <field name="doc_name"/>
+                    </group>
+                    <group string="Отримувач">
+                        <field name="partner_id" options="{'no_create': True}"/>
+                        <field name="recipient_code" placeholder="8 або 10 цифр"/>
+                        <field name="recipient_name"/>
+                        <field name="recipient_email" widget="email"/>
+                    </group>
+                </group>
+                <field name="preview_name" invisible="True"/>
+                <field name="preview_pdf" widget="pdf_viewer" filename="preview_name"
+                       invisible="not preview_pdf" nolabel="1"/>
+                <footer>
+                    <button name="action_create" type="object" string="Підписати" class="btn-primary"
+                            help="Створити документ в Active Doc із цієї друкованої форми й одразу відкрити вікно підпису КЕП."/>
+                    <button name="action_preview" type="object" string="Переглянути"
+                            class="btn-secondary"
+                            help="Сформувати PDF і показати його тут — нічого не надсилаючи."/>
+                    <button name="action_check" type="object" string="Перевірити"
+                            class="btn-secondary"
+                            help="Перевірити все, що може завадити, — нічого не створює."/>
+                    <button string="Скасувати" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
