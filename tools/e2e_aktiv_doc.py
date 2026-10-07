@@ -150,6 +150,7 @@ def setup_db(db, org, code, key, other_org, other_code):
 
 
 SHOTS = None   # тека для знімків магазину (--shots); None — не знімати
+PAGES = []     # усі сторінки браузера — знімаються, якщо прогін упав
 
 
 def shot(page, name):
@@ -184,6 +185,7 @@ def sign_in_window(page, key_file, cert_file, password, shot_name=None):
 def login(browser, db, base=URL):
     ctx = browser.new_context(locale="uk-UA", viewport={"width": 1400, "height": 1300})
     page = ctx.new_page()
+    PAGES.append(page)
     # `login=` у адресі — і форма видима вже з сервера: в Odoo 18 вона рендериться з
     # `d-none`, і показує її лише JS перемикача користувачів.
     page.goto("%s/web/login?db=%s&login=admin" % (base, db))
@@ -241,7 +243,8 @@ def main():
               "А: «Перевірити з'єднання» — %s" % me["params"]["message"].splitlines()[0])
 
         from playwright.sync_api import sync_playwright
-        with sync_playwright() as pw:
+        pw = sync_playwright().start()
+        try:
             browser = pw.chromium.launch()
             print("1. А: рахунок → «Надіслати на підпис» → вікно підпису")
             ctx_a, page = login(browser, DB_A)
@@ -360,6 +363,19 @@ def main():
             ctx_a.close()
             ctx_b.close()
             browser.close()
+        except Exception:
+            # Падіння на будь-якому кроці — знімки всіх відкритих сторінок, а не
+            # здогадки: браузер закриється разом із драйвером, і подивитись буде нічого.
+            for index, opened in enumerate(PAGES):
+                try:
+                    path = SECRETS / ("fail-%d.png" % index)
+                    opened.screenshot(path=str(path))
+                    print("  знімок падіння: %s (%s)" % (path.name, opened.url))
+                except Exception:  # noqa: BLE001 — сторінку вже могли закрити
+                    pass
+            raise
+        finally:
+            pw.stop()
     finally:
         server.terminate()
         try:
