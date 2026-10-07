@@ -197,8 +197,9 @@ def login(browser, db, base=URL):
     if body.get("error"):
         raise RuntimeError("вхід у %s: %s" % (db, (body["error"].get("data") or {}).get("message")
                                                or body["error"].get("message")))
-    page.goto(base + "/odoo")
-    # Перший захід у свіжу базу збирає ассети бекенда (у 18 — до пів хвилини).
+    # Перший захід у свіжу базу збирає ассети бекенда — у 18 ~40 с, довше за типові 30 с
+    # `goto`, що чекає подію load. Тож чекаємо DOM, а готовність — за навбаром.
+    page.goto(base + "/odoo", wait_until="domcontentloaded", timeout=180000)
     page.locator(".o_main_navbar").wait_for(timeout=180000)
     return ctx, page
 
