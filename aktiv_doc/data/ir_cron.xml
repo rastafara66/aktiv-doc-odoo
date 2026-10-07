@@ -11,4 +11,15 @@
         <field name="interval_type">minutes</field>
         <field name="active" eval="True"/>
     </record>
+
+    <!-- STORE-CONVENTIONS §8: Odoo не питає магазин про нові версії сторонніх модулів. -->
+    <record id="ir_cron_aktiv_doc_update_check" model="ir.cron">
+        <field name="name">Active Doc: перевірити нову версію модуля</field>
+        <field name="model_id" ref="model_aktiv_doc_update"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_check()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>

@@ -45,6 +45,11 @@
                             help="Перепитати Active Doc про стан документа зараз."/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,signed,sent,done"/>
                 </header>
+                <div class="alert alert-info mb-0" role="status" invisible="not update_message">
+                    <field name="update_message" readonly="True" class="d-inline"/>
+                    <field name="update_url" widget="url" text="Сторінка в магазині Odoo" readonly="True"
+                           class="ms-2 d-inline"/>
+                </div>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_open_record" type="object" class="oe_stat_button"
