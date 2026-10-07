@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Наскрізна перевірка «Актив Doc» на живому https://doc.aktiv.in.ua — так, як це робить людина.
+"""Наскрізна перевірка «Active Doc» на живому https://doc.aktiv.in.ua — так, як це робить людина.
 
     python tools/e2e_aktiv_doc.py            # дві тимчасові бази, Odoo на :8070, браузер без вікна
     python tools/e2e_aktiv_doc.py --keep     # бази не видаляти (для розбору)
@@ -344,8 +344,8 @@ def main():
             three_a = pathlib.Path(os.environ.get("THREE_A", r"C:\Users\chukhin\Projects\adealer"))
             subprocess.run([sys.executable, str(three_a / "tools" / "ops" / "db_classes.py"),
                             "drop", DB_A, DB_B], stdout=subprocess.DEVNULL)
-    print("\n✅ «Актив Doc»: наскрізно пройдено" if not problems
-          else "\n🔴 «Актив Doc»: не пройдено %d" % len(problems))
+    print("\n✅ «Active Doc»: наскрізно пройдено" if not problems
+          else "\n🔴 «Active Doc»: не пройдено %d" % len(problems))
     return 1 if problems else 0
 
 

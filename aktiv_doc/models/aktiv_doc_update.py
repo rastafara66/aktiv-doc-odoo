@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Сказати користувачеві, що вийшла новіша версія «Актив Doc» (STORE-CONVENTIONS §8).
+"""Сказати користувачеві, що вийшла новіша версія «Active Doc» (STORE-CONVENTIONS §8).
 
 🔴 Odoo цього не робить для сторонніх модулів: її «Оновити» порівнює встановлене з
 тим, що вже лежить на диску, і ніколи не питає магазин. Покупець зі збіркою з
@@ -57,7 +57,7 @@ def parse_version(text):
 
 class AktivDocUpdate(models.AbstractModel):
     _name = "aktiv.doc.update"
-    _description = "Перевірка версії «Актив Doc»"
+    _description = "Перевірка версії «Active Doc»"
 
     @api.model
     def _enabled(self):
@@ -108,7 +108,7 @@ class AktivDocUpdate(models.AbstractModel):
         """Добова задача: ніколи не падає, тихо оновлює кеш."""
         ok, reason = self._run_check()
         if not ok and reason:
-            _logger.info("Перевірку версії «Актив Doc» пропущено: %s", reason)
+            _logger.info("Перевірку версії «Active Doc» пропущено: %s", reason)
         return ok
 
     @api.model
@@ -142,7 +142,7 @@ class AktivDocUpdate(models.AbstractModel):
         if not outdated:
             return False, False
         name, installed, latest = outdated[0]
-        return _("Вийшла новіша версія «Актив Doc»: %(latest)s (у вас %(installed)s).",
+        return _("Вийшла новіша версія «Active Doc»: %(latest)s (у вас %(installed)s).",
                  latest=latest, installed=installed), \
             STORE_URL % (series_of(installed) or "19.0", name)
 
@@ -152,7 +152,7 @@ class AktivDocDocumentUpdateBanner(models.Model):
     _inherit = "aktiv.doc.document"
 
     update_message = fields.Char(compute="_compute_update_message",
-                                 help="Повідомлення про нову версію «Актив Doc», якщо вона вийшла.")
+                                 help="Повідомлення про нову версію «Active Doc», якщо вона вийшла.")
     update_url = fields.Char(compute="_compute_update_message",
                              help="Де взяти нову версію — сторінка магазину Odoo.")
 

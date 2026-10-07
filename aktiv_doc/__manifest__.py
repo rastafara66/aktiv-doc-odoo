@@ -2,16 +2,16 @@
 {
     # Англійські ключові слова в назві й summary — свідомо: магазин шукає лише за ними
     # (замір 06.09.2026: український опис знаходиться тільки кирилицею).
-    'name': "Актив Doc — підпис КЕП і обмін документами з контрагентами / "
+    'name': "Active Doc — підпис КЕП і обмін документами з контрагентами / "
             "Ukraine e-signature (KEP) and e-document exchange (EDI)",
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'summary': "Ukrainian qualified electronic signature (KEP) and e-document exchange "
                "(EDI) for Ukraine: sign invoices, acts and delivery notes and send them to "
                "counterparties without leaving Odoo. Рахунки, акти й накладні підписуються "
                "КЕП і йдуть контрагенту прямо з Odoo.",
     'description': """
-Актив Doc
-=========
+Active Doc
+==========
 
 Підпис КЕП і обмін первинними документами з контрагентами через сервіс
 Active Doc (https://doc.aktiv.in.ua) — не виходячи з Odoo.
@@ -29,7 +29,7 @@ Active Doc (https://doc.aktiv.in.ua) — не виходячи з Odoo.
     'website': "https://doc.aktiv.in.ua",
     'support': "info@aktiv.in.ua",
     'license': 'LGPL-3',
-    # 🔴 Лише штатні модулі: «Актив Doc» — окремий безкоштовний товар, і
+    # 🔴 Лише штатні модулі: «Active Doc» — окремий безкоштовний товар, і
     # «Актив» / «Актив Pro» від нього НЕ залежать (правило надпроєкту: модулі
     # незалежні). Кнопка працює на будь-якому рахунку будь-якої бази.
     'depends': ['account', 'mail'],

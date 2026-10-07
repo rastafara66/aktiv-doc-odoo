@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Банер-картка «Актив Doc» для магазину (`aktiv_doc/static/description/banner.png`).
+"""Банер-картка «Active Doc» для магазину (`aktiv_doc/static/description/banner.png`).
 
     python tools/make_banner.py
 

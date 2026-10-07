@@ -33,7 +33,7 @@ MONTHS_UK = ["січень", "лютий", "березень", "квітень",
 
 #: Що нового, новіше першим: (версія, місяць, рік, англійською, українською). Сухо (§3).
 NEWS = [
-    ("19.0.1.0.0", "October", 2026,
+    ("19.0.1.0.1", "October", 2026,
      "First release: send for signature from invoices, signing inside Odoo, incoming "
      "documents, the signed archive on the invoice, an Active Doc column in the invoice "
      "list, update check.",
