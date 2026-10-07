@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 """Наскрізна перевірка «Active Doc» на живому https://doc.aktiv.in.ua — так, як це робить людина.
 
-    python tools/e2e_aktiv_doc.py            # дві тимчасові бази, Odoo на :8070, браузер без вікна
+    python tools/e2e_aktiv_doc.py            # дві тимчасові бази, свій Odoo на :8075, браузер без вікна
+    python tools/e2e_aktiv_doc.py --port 8070  # на старих ключах (порт робочого Odoo — зупинити його)
     python tools/e2e_aktiv_doc.py --keep     # бази не видаляти (для розбору)
 
-Тестові організації Active Doc «Тестова база «Актив Doc» А» (00000031) і «Б» (00000032),
-ключі API видано під http://localhost:8070 — тому Odoo тут слухає саме цей порт.
+Тестові організації Active Doc «Тестова база «Актив Doc» А» (00000031) і «Б» (00000032).
+Ключ API прив'язаний до адреси Odoo, тож порт — частина ключа: під http://localhost:8070
+(поле `key`) і, з 07.10.2026, під http://localhost:8075 (поле `key_8075`). Типово — 8075:
+на 8070 живе робочий локальний Odoo, і перевірка на ньому мусила його зупиняти.
 
 Секрети — лише в gitignored `e2e.local/` поруч із репо (з VPS, `active-doc/.secrets` і
 `samples/test-keys`): `api-keys-local-dev.json`, тестові ключі КЕП `Key-6*.dat`,
@@ -59,7 +62,8 @@ else:
     STOCK = [ODOO / "odoo" / "addons", ODOO / "custom_addons", ODOO / "my_addons"]
     WKHTMLTOPDF = ODOO / "wkhtmltox" / "bin"
 ADDONS = ",".join([str(p) for p in STOCK] + [str(REPO)])
-URL = "http://localhost:8070"
+PORT = 8075                       # перевизначає `--port` у main()
+URL = "http://localhost:%d" % PORT
 DB_A, DB_B = "tmp_adoc_e2e_a", "tmp_adoc_e2e_b"
 ORG_A, ORG_B = "Тестова база «Актив Doc» А", "Тестова база «Актив Doc» Б"
 CODE_A, CODE_B = "00000031", "00000032"
@@ -182,7 +186,10 @@ def sign_in_window(page, key_file, cert_file, password, shot_name=None):
     page.locator(".o_aktiv_doc_sign_frame").wait_for(state="detached", timeout=120000)
 
 
-def login(browser, db, base=URL):
+def login(browser, db, base=None):
+    # Не `base=URL`: значення за замовчуванням береться в момент `def`, а порт
+    # (і з ним URL) задає `--port` уже в main().
+    base = base or URL
     ctx = browser.new_context(locale="uk-UA", viewport={"width": 1400, "height": 1300})
     page = ctx.new_page()
     PAGES.append(page)
@@ -208,14 +215,22 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--keep", action="store_true")
     ap.add_argument("--shots", help="тека для знімків картки магазину (static/description)")
+    ap.add_argument("--port", type=int, default=8075, choices=(8070, 8075),
+                    help="порт, під який видано ключі (типово 8075 — поруч із робочим Odoo)")
     args = ap.parse_args()
-    global SHOTS
+    global SHOTS, PORT, URL
     SHOTS = args.shots
+    PORT, URL = args.port, "http://localhost:%d" % args.port
     keys = json.load(open(SECRETS / "api-keys-local-dev.json", encoding="utf-8"))["orgs"]
-    key_a, key_b = keys[ORG_A]["key"], keys[ORG_B]["key"]
+    field = "key" if PORT == 8070 else "key_%d" % PORT
+    if any(field not in keys[org] for org in (ORG_A, ORG_B)):
+        print("🔴 у e2e.local/api-keys-local-dev.json немає ключів під :%d (поле %s) — "
+              "забрати свіжий файл з VPS (active-doc/.secrets)" % (PORT, field))
+        return 2
+    key_a, key_b = keys[ORG_A][field], keys[ORG_B][field]
     password = (SECRETS / "PASSWORD.txt").read_text(encoding="utf-8").strip()
-    if port_open(8070):
-        print("🔴 порт 8070 зайнятий — зупиніть свій Odoo на час перевірки")
+    if port_open(PORT):
+        print("🔴 порт %d зайнятий — на ньому вже щось працює" % PORT)
         return 2
 
     print("0. Дві чисті бази з account + aktiv_doc")
@@ -224,13 +239,13 @@ def main():
     # Фільтр баз — явно: Odoo під Windows ще при імпорті читає `odoo.conf` поруч з
     # odoo-bin, а `-c` перекриває лише свої ключі. У збірці 18 там `dbfilter = .*18$`
     # служби — і сервер відповідав «Database not found» на щойно створені бази.
-    server = subprocess.Popen(odoo_cmd("--max-cron-threads=0", "--http-port=8070",
+    server = subprocess.Popen(odoo_cmd("--max-cron-threads=0", "--http-port=%d" % PORT,
                                        "--db-filter=^(%s|%s)$" % (DB_A, DB_B),
                                        "--logfile=" + str(LOG)), env=odoo_env(),
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         for _i in range(120):
-            if port_open(8070):
+            if port_open(PORT):
                 break
             time.sleep(1)
         a, _company_a, partner_b = setup_db(DB_A, ORG_A, CODE_A, key_a, ORG_B, CODE_B)
@@ -360,7 +375,7 @@ def main():
             error.wait_for(timeout=60000)
             orphans = a.call("aktiv.doc.document", "search_count",
                              [("record_ref", "=", "account.move,%d" % move2)])
-            check("http://localhost:8070" in error.inner_text() and orphans == 0,
+            check(URL in error.inner_text() and orphans == 0,
                   "людина бачить, за якою адресою відкрити Odoo; чернетки в Active Doc немає")
             ctx_c.close()
             ctx_a.close()
