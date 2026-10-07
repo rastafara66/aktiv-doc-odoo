@@ -103,8 +103,10 @@ class Session:
 
 
 def make_db(db):
-    subprocess.run(odoo_cmd("-d", db, "-i", "account,aktiv_doc", "--stop-after-init",
-                            "--log-level=warn"), check=True, env=odoo_env(),
+    # Українська — як у всієї лінійки «Актив»: інакше кнопки Odoo англійські поруч
+    # із нашими українськими, і знімки магазину виходять мішаниною мов.
+    subprocess.run(odoo_cmd("-d", db, "-i", "account,aktiv_doc", "--load-language=uk_UA",
+                            "--stop-after-init", "--log-level=warn"), check=True, env=odoo_env(),
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1800)
 
 
@@ -114,12 +116,35 @@ def setup_db(db, org, code, key, other_org, other_code):
     s.call("res.company", "write", [company], {"name": org, "company_registry": code,
                                                "aktiv_doc_key": key})
     s.call("ir.config_parameter", "set_param", "web.base.url", URL)
+    s.call("res.users", "write", [2], {"lang": "uk_UA", "tz": "Europe/Kyiv"})
+    # Україна й гривня — до першого документа (потім валюту компанії Odoo не змінить):
+    # інакше в PDF на знімку «Сполучені Штати» і «$».
+    ukraine = s.call("res.country", "search", [("code", "=", "UA")], limit=1)
+    uah = s.call("res.currency", "search", [("name", "=", "UAH"), ("active", "in", [True, False])],
+                 limit=1)
+    s.call("res.currency", "write", uah, {"active": True})
+    s.call("res.company", "write", [company], {"country_id": ukraine[0], "currency_id": uah[0]})
     partner = s.call("res.partner", "create", {"name": other_org, "is_company": True,
                                                "company_registry": other_code})
     return s, company, partner
 
 
-def sign_in_window(page, key_file, cert_file, password):
+SHOTS = None   # тека для знімків магазину (--shots); None — не знімати
+
+
+def shot(page, name):
+    """Кадр для картки магазину: 256 кольорів (стискаємо кольорами, не розміром)."""
+    if not SHOTS:
+        return
+    from PIL import Image
+    path = os.path.join(SHOTS, name)
+    page.wait_for_timeout(1500)
+    page.screenshot(path=path)
+    Image.open(path).convert("RGB").quantize(colors=256).save(path, optimize=True)
+    print("     знімок %s" % name)
+
+
+def sign_in_window(page, key_file, cert_file, password, shot_name=None):
     """Підпис у вікні Active Doc, вбудованому в наш діалог."""
     frame = page.frame_locator(".o_aktiv_doc_sign_frame")
     frame.locator("#key").set_input_files(str(key_file))
@@ -128,16 +153,23 @@ def sign_in_window(page, key_file, cert_file, password):
     frame.locator("#read-key:enabled").wait_for(timeout=90000)
     frame.locator("#read-key").click()
     frame.locator("#signer", has_text="Ключ зчитано").wait_for(timeout=60000)
+    if shot_name:
+        shot(page, shot_name)
     frame.locator("#sign:enabled").wait_for(timeout=30000)
     frame.locator("#sign").click()
     # Наше вікно закривається само, щойно Active Doc сказав «adoc:signed».
     page.locator(".o_aktiv_doc_sign_frame").wait_for(state="detached", timeout=120000)
 
 
-def login(browser, db):
+def login(browser, db, base=URL):
     ctx = browser.new_context(locale="uk-UA", viewport={"width": 1400, "height": 1300})
     page = ctx.new_page()
-    page.goto("%s/web/login?db=%s" % (URL, db))
+    page.goto("%s/web/login?db=%s" % (base, db))
+    try:
+        page.locator("input[name=login]").wait_for(state="visible", timeout=60000)
+    except Exception:
+        page.screenshot(path=str(SECRETS / ("fail-login-%s.png" % db)))
+        raise
     page.fill("input[name=login]", "admin")
     page.fill("input[name=password]", "admin")
     page.click("button[type=submit]")
@@ -148,7 +180,10 @@ def login(browser, db):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--keep", action="store_true")
+    ap.add_argument("--shots", help="тека для знімків картки магазину (static/description)")
     args = ap.parse_args()
+    global SHOTS
+    SHOTS = args.shots
     keys = json.load(open(SECRETS / "api-keys-local-dev.json", encoding="utf-8"))["orgs"]
     key_a, key_b = keys[ORG_A]["key"], keys[ORG_B]["key"]
     password = (SECRETS / "PASSWORD.txt").read_text(encoding="utf-8").strip()
@@ -185,8 +220,20 @@ def main():
             print("1. А: рахунок → «Надіслати на підпис» → вікно підпису")
             ctx_a, page = login(browser, DB_A)
             page.goto("%s/odoo/action-account.action_move_out_invoice_type/%d" % (URL, move))
-            page.get_by_role("button", name="Надіслати на підпис").click()
+            try:
+                page.get_by_role("button", name="Надіслати на підпис").click()
+            except Exception:
+                # Знімок того, що бачить людина, — замість здогадок про верстку.
+                page.screenshot(path=str(SECRETS / "fail.png"))
+                raise
             dialog = page.locator(".modal")
+            dialog.get_by_role("button", name="Переглянути").click()
+            # Чекаємо саму відмальовану сторінку PDF, а не рамку переглядача: перший
+            # знімок вийшов із порожнім «0 із 0» — рамка вже була, сторінки ще ні.
+            pdf_frame = page.frame_locator(".modal iframe")
+            pdf_frame.locator(".page[data-loaded='true']").first.wait_for(timeout=90000)
+            check(True, "перегляд PDF у майстрі відмальовано")
+            shot(page, "screenshot_send.png")
             dialog.get_by_role("button", name="Підписати").click()
             page.locator(".o_aktiv_doc_sign_frame").wait_for(timeout=60000)
             doc = a.call("aktiv.doc.document", "search_read", [("record_ref", "=",
@@ -202,7 +249,8 @@ def main():
                   "вікно підпису не закрилось від повідомлення з чужого origin")
 
             print("3. Підпис тестовим ключем А")
-            sign_in_window(page, SECRETS / "Key-6.dat", SECRETS / "test-signer.cer", password)
+            sign_in_window(page, SECRETS / "Key-6.dat", SECRETS / "test-signer.cer", password,
+                           shot_name="screenshot_sign.png")
             state = a.call("aktiv.doc.document", "read", [doc["id"]], ["state", "state_label"])[0]
             check(state["state"] == "signed", "вікно закрилось саме; стан: «%s»"
                   % state["state_label"])
@@ -226,6 +274,8 @@ def main():
             ctx_b, page_b = login(browser, DB_B)
             page_b.goto("%s/odoo/action-aktiv_doc.action_aktiv_doc_incoming/%d"
                         % (URL, incoming[0]["id"]))
+            page_b.locator(".o_form_sheet").wait_for(timeout=60000)
+            shot(page_b, "screenshot_incoming.png")
             page_b.get_by_role("button", name="Підписати").click()
             page_b.locator(".o_aktiv_doc_sign_frame").wait_for(timeout=60000)
             sign_in_window(page_b, SECRETS / "Key-6-b.dat",
@@ -250,6 +300,37 @@ def main():
                 names = zipfile.ZipFile(io.BytesIO(base64.b64decode(raw))).namelist()
                 check(len([n for n in names if ".sign" in n]) == 2 and "protokol.html" in names,
                       "в архіві два підписи й протокол (%d файлів)" % len(names))
+            if SHOTS:
+                page.goto("%s/odoo/action-aktiv_doc.action_aktiv_doc_outgoing/%d" % (URL, doc["id"]))
+                page.locator(".o_form_sheet").wait_for(timeout=60000)
+                shot(page, "screenshot_document.png")
+
+            print("6. Колонка «Active Doc» у списку рахунків")
+            page.goto("%s/odoo/action-account.action_move_out_invoice_type" % URL)
+            row = page.locator(".o_data_row").first
+            row.wait_for(timeout=60000)
+            check("Підписано обома" in row.inner_text(),
+                  "у списку рахунків поруч зі «Стан» — «Підписано обома»")
+            shot(page, "screenshot_list.png")
+
+            print("7. Odoo відкрито не з адреси ключа — пояснення ДО завантаження")
+            move2 = a.call("account.move", "create", {
+                "move_type": "out_invoice", "partner_id": partner_b,
+                "invoice_line_ids": [(0, 0, {"name": "Консультаційні послуги", "quantity": 1,
+                                             "price_unit": 500.0})]})
+            a.call("account.move", "action_post", [move2])
+            other = URL.replace("localhost", "127.0.0.1")
+            ctx_c, page_c = login(browser, DB_A, other)
+            page_c.goto("%s/odoo/action-account.action_move_out_invoice_type/%d" % (other, move2))
+            page_c.get_by_role("button", name="Надіслати на підпис").click()
+            page_c.locator(".modal").get_by_role("button", name="Підписати").click()
+            error = page_c.locator(".modal", has_text="відкрийте Odoo за адресою")
+            error.wait_for(timeout=60000)
+            orphans = a.call("aktiv.doc.document", "search_count",
+                             [("record_ref", "=", "account.move,%d" % move2)])
+            check("http://localhost:8070" in error.inner_text() and orphans == 0,
+                  "людина бачить, за якою адресою відкрити Odoo; чернетки в Active Doc немає")
+            ctx_c.close()
             ctx_a.close()
             ctx_b.close()
             browser.close()

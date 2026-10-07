@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 {
+    # Англійські ключові слова в назві й summary — свідомо: магазин шукає лише за ними
+    # (замір 06.09.2026: український опис знаходиться тільки кирилицею).
     'name': "Актив Doc — підпис КЕП і обмін документами з контрагентами / "
-            "Ukrainian e-signature (KEP) and document exchange",
+            "Ukraine e-signature (KEP) and e-document exchange (EDI)",
     'version': '19.0.1.0.0',
-    'summary': "Рахунки, акти й накладні підписуються КЕП і йдуть контрагенту "
-               "прямо з Odoo, вхідні з'являються самі. Ukrainian qualified "
-               "e-signature (KEP), e-document exchange (EDO) with counterparties.",
+    'summary': "Ukrainian qualified electronic signature (KEP) and e-document exchange "
+               "(EDI) for Ukraine: sign invoices, acts and delivery notes and send them to "
+               "counterparties without leaving Odoo. Рахунки, акти й накладні підписуються "
+               "КЕП і йдуть контрагенту прямо з Odoo.",
     'description': """
 Актив Doc
 =========
@@ -48,6 +51,15 @@ Active Doc (https://doc.aktiv.in.ua) — не виходячи з Odoo.
             'aktiv_doc/static/src/xml/sign_dialog.xml',
         ],
     },
+    # images[0] — картка в каталозі магазину; галерею на сторінці будує index.html.
+    'images': [
+        'static/description/banner.png',
+        'static/description/screenshot_send.png',
+        'static/description/screenshot_sign.png',
+        'static/description/screenshot_incoming.png',
+        'static/description/screenshot_document.png',
+        'static/description/screenshot_list.png',
+    ],
     'installable': True,
     'application': False,
     'auto_install': False,

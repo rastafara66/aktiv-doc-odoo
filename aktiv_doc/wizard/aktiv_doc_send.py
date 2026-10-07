@@ -6,6 +6,7 @@ import re
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+from ..models.aktiv_doc_client import AktivDocError, origin_of
 from ..models.aktiv_doc_document import CODE_RE, format_problems
 
 #: Типова друкована форма для моделі — найзвичніша, якщо їх кілька.
@@ -124,6 +125,8 @@ class AktivDocSend(models.TransientModel):
                 _("адміністратор створює ключ у кабінеті Active Doc («Організація» → "
                   "«Ключі API») і вставляє його в Налаштуваннях: Виставлення рахунків → "
                   "Active Doc")))
+        else:
+            problems += self._origin_problems(company)
         problems += record._aktiv_doc_problems()
         if not self.report_id:
             problems.append((_("Не вибрано друковану форму"),
@@ -144,6 +147,39 @@ class AktivDocSend(models.TransientModel):
                              _("вона стоїть у документі й у листі контрагенту"),
                              _("впишіть назву або виберіть контрагента")))
         return problems
+
+    @api.model
+    def _browser_origin(self):
+        """Адреса, з якої людина відкрила Odoo, — заголовок `Origin` її запиту."""
+        from odoo.http import request
+        if not request:
+            return ""
+        return origin_of(request.httprequest.headers.get("Origin") or "")
+
+    def _origin_problems(self, company):
+        """Чи відкриється вікно підпису з цієї адреси — ДО завантаження PDF.
+
+        Ключ дозволяє вбудовувати вікно підпису лише з однієї адреси бази. Відкрито Odoo
+        з іншої (стара http-адреса, IP замість імені) — браузер покаже порожнє вікно, а
+        в Active Doc лишиться чернетка-сирота. Так спіткнувся власник у «Рахівнику».
+        """
+        here = self._browser_origin()
+        if not here:
+            return []
+        try:
+            me = self.env["aktiv.doc.client"]._request(company, "GET", "me")
+        except AktivDocError as error:
+            return [(_("Active Doc не відповів на перевірку ключа"), str(error),
+                     _("виправте вказане вище й повторіть"))]
+        allowed = origin_of((me.get("key") or {}).get("origin"))
+        if not allowed or allowed == here:
+            return []
+        return [(
+            _("Odoo відкрито за адресою %(here)s, а вікно підпису Active Doc відкривається лише "
+              "в Odoo за адресою %(allowed)s", here=here, allowed=allowed),
+            _("так записано в ключі API: на іншій адресі браузер вікна підпису не покаже"),
+            _("відкрийте Odoo за адресою %(allowed)s і натисніть ще раз — або в кабінеті Active "
+              "Doc вкажіть для ключа адресу %(here)s", allowed=allowed, here=here))]
 
     def _file_name(self):
         base = re.sub(r"[^\w\-]+", "_", self.doc_name or "document", flags=re.UNICODE).strip("_")

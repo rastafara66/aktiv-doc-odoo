@@ -77,7 +77,8 @@
                             <field name="counterparty_name"/>
                             <field name="counterparty_code"/>
                             <field name="counterparty_email" invisible="not counterparty_email"/>
-                            <field name="in_cabinet"/>
+                            <!-- Для вхідного відправник надіслав саме з кабінету — поле не має сенсу. -->
+                            <field name="in_cabinet" invisible="direction == 'in'"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>

@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
-from urllib.parse import urlsplit
-
 from odoo import _, fields, models
 
-
-def _origin_of(url):
-    parts = urlsplit((url or "").strip())
-    return "%s://%s" % (parts.scheme, parts.netloc) if parts.scheme and parts.netloc else ""
+from .aktiv_doc_client import origin_of as _origin_of
 
 
 class ResConfigSettings(models.TransientModel):

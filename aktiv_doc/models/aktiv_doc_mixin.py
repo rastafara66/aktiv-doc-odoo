@@ -10,10 +10,26 @@ from collections import defaultdict
 from odoo import _, fields, models
 
 
+#: Колонка «Active Doc» у списку записів — поруч зі штатним «Стан».
+AKTIV_DOC_STATES = [
+    ("waiting", "Чекає підпису"),
+    ("signed", "Підписано"),
+    ("sent", "Надіслано"),
+    ("done", "Підписано обома"),
+    ("rejected", "Відхилено"),
+]
+
+
 class AktivDocMixin(models.AbstractModel):
     _name = "aktiv.doc.mixin"
     _description = "Документ обліку, який можна надіслати на підпис через Active Doc"
 
+    # Збережене (а не обчислюване на льоту): його фільтрують і групують у списку.
+    # Пише його сам документ Active Doc (`aktiv.doc.document._sync_record_state`).
+    aktiv_doc_state = fields.Selection(
+        AKTIV_DOC_STATES, string="Active Doc", readonly=True, copy=False, index=True,
+        help="Стан останнього документа Active Doc із цього запису: чекає нашого підпису, "
+             "підписано, надіслано контрагенту, підписано обома сторонами чи відхилено.")
     aktiv_doc_count = fields.Integer(
         "Документів Active Doc", compute="_compute_aktiv_doc",
         help="Скільки разів цей запис надсилали на підпис через Active Doc.")
@@ -63,6 +79,28 @@ class AktivDocMixin(models.AbstractModel):
             "target": "new",
             "context": {"default_res_model": self._name, "default_res_id": self.id},
         }
+
+    def _aktiv_doc_latest(self):
+        self.ensure_one()
+        return self.env["aktiv.doc.document"].search(
+            [("record_ref", "=", "%s,%s" % (self._name, self.id))], order="id desc", limit=1)
+
+    def action_aktiv_doc_refresh(self):
+        """«Оновити» на табличці — перепитати Active Doc про останній документ запису."""
+        for record in self:
+            record._aktiv_doc_latest().action_refresh()
+        return True
+
+    def action_aktiv_doc_sign_latest(self):
+        """«Підписати» на записі — вікно підпису для документа, який ще чекає нашого підпису."""
+        self.ensure_one()
+        return self._aktiv_doc_latest().action_sign()
+
+    def action_aktiv_doc_send_signed(self):
+        """«Надіслати контрагенту» на записі — для підписаного й ще не надісланого."""
+        self.ensure_one()
+        self._aktiv_doc_latest().action_send()
+        return True
 
     def action_aktiv_doc_open(self):
         self.ensure_one()

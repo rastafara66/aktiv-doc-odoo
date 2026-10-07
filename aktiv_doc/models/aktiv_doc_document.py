@@ -30,8 +30,12 @@ STATES = [
     ("done", "Підписано обома сторонами"),
     ("rejected", "Відхилено"),
 ]
-#: ЄДРПОУ — 8 цифр, РНОКПП — 10.
-CODE_RE = re.compile(r"^(\d{8}|\d{10})$")
+#: ЄДРПОУ — 8 цифр, РНОКПП — 10. 🔴 `[0-9]`, а не `\d`: `\d` у Python пропускає цифри
+#: інших письмен («١٢٣…»), і Active Doc відкинув би такий код з незрозумілою людині причиною.
+CODE_RE = re.compile(r"^([0-9]{8}|[0-9]{10})$")
+#: Стан документа Active Doc → стан у колонці «Active Doc» списку рахунків.
+RECORD_STATE = {"draft": "waiting", "signed": "signed", "sent": "sent", "done": "done",
+                "rejected": "rejected"}
 #: Скільки сторінок змін забирати за один прогін cron-а (по 200 документів).
 SYNC_PAGES = 20
 
@@ -80,8 +84,10 @@ class AktivDocDocument(models.Model):
                                  required=True, default="out", readonly=True,
                                  help="Вихідний — ми надсилаємо контрагенту; вхідний — "
                                       "контрагент надіслав нам.")
+    # Без tracking: зміну стану пише `_post_event` словами Active Doc («Підписано 1 з 2»),
+    # а відстеження поля дублювало кожну подію другим записом у стрічці.
     state = fields.Selection(STATES, string="Стан", default="draft", required=True,
-                             readonly=True, tracking=True,
+                             readonly=True,
                              help="Стан документа в Active Doc. Оновлюється сам кожні "
                                   "кілька хвилин і після кожної дії.")
     state_label = fields.Char("Що з документом", readonly=True,
@@ -134,6 +140,34 @@ class AktivDocDocument(models.Model):
     def _selection_record_model(self):
         return [(model.model, model.name) for model in self.env["ir.model"].sudo().search([])]
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        docs = super().create(vals_list)
+        docs._sync_record_state()
+        return docs
+
+    def write(self, vals):
+        result = super().write(vals)
+        if {"state", "record_ref"} & set(vals):
+            self._sync_record_state()
+        return result
+
+    def _sync_record_state(self):
+        """Стан останнього вихідного документа — у колонку «Active Doc» запису обліку.
+
+        Власник в «Рахівнику» стану на вкладці не помітив («не бачу»): його треба бачити
+        в СПИСКУ рахунків поряд зі «Стан». Тому поле збережене — фільтрується й групується.
+        """
+        for doc in self.filtered(lambda d: d.direction == "out"):
+            record = doc._record()
+            if not record or "aktiv_doc_state" not in record._fields:
+                continue
+            latest = self.search([("record_ref", "=", "%s,%s" % (record._name, record.id))],
+                                 order="id desc", limit=1)
+            value = RECORD_STATE.get(latest.state) or False
+            if record.aktiv_doc_state != value:
+                record.sudo().write({"aktiv_doc_state": value})
+
     # ------------------------------------------------------------------
     # Відповідь API → поля
     # ------------------------------------------------------------------
@@ -147,10 +181,17 @@ class AktivDocDocument(models.Model):
             if sign.get("org_code"):
                 org = "%s (%s)" % (org, sign["org_code"])
             moment = _parse_time(sign.get("time"))
+            when = ""
+            if moment:
+                # Час — у поясі користувача, а без нього (cron) — київський: КЕП українські,
+                # і текст не має залежати від того, хто саме синхронізував.
+                tz = self.env.context.get("tz") or self.env.user.tz or "Europe/Kyiv"
+                local = fields.Datetime.context_timestamp(self.with_context(tz=tz), moment)
+                when = " · %s" % local.strftime("%d.%m.%Y %H:%M")
             lines.append("%s: %s%s%s%s" % (
                 side.get(sign.get("side"), sign.get("side") or "?"), who or "?",
                 " — %s" % org if org.strip() else "",
-                " · %s UTC" % moment.strftime("%d.%m.%Y %H:%M") if moment else "",
+                when,
                 _(" · тестовий ключ") if sign.get("test_key") else ""))
         return "\n".join(lines) or False
 

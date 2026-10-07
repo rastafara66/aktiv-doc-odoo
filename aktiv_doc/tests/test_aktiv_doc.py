@@ -322,6 +322,48 @@ class TestAktivDoc(AccountTestInvoicingCommon):
         with self.assertRaises(UserError):
             doc.unlink()
 
+    def test_invoice_column_follows_document(self):
+        """Колонка «Active Doc» у списку рахунків — за станом останнього документа."""
+        self.connect()
+        doc = self.env["aktiv.doc.document"].browse(
+            self.wizard().action_create()["params"]["doc_id"])
+        self.assertEqual(self.invoice.aktiv_doc_state, "waiting")
+        self.adoc.docs[doc.adoc_id].update(state="signed", can_sign=False,
+                                           state_label="Підписано, не надіслано")
+        self.invoice.action_aktiv_doc_refresh()
+        self.assertEqual(self.invoice.aktiv_doc_state, "signed")
+        self.invoice.action_aktiv_doc_send_signed()      # кнопка в шапці рахунку
+        self.assertEqual(self.invoice.aktiv_doc_state, "sent")
+        self.adoc.docs[doc.adoc_id].update(state="done")
+        self.env["aktiv.doc.document"]._cron_sync()
+        self.assertEqual(self.invoice.aktiv_doc_state, "done")
+        self.assertEqual(self.env["account.move"].search_count(
+            [("id", "=", self.invoice.id), ("aktiv_doc_state", "=", "done")]), 1,
+            "поле збережене — список його фільтрує")
+
+    def test_wrong_address_stopped_before_upload(self):
+        """Odoo відкрито не з адреси ключа — пояснення ДО завантаження, без чернетки-сироти."""
+        self.connect()
+        send = type(self.env["aktiv.doc.send"])
+        with patch.object(send, "_browser_origin", return_value="http://127.0.0.1:8069"):
+            with self.assertRaises(UserError) as caught:
+                self.wizard().action_create()
+        message = str(caught.exception)
+        self.assertIn("http://localhost:8070", message)
+        self.assertIn("відкрийте Odoo за адресою", message)
+        self.assertEqual([call[1] for call in self.adoc.calls], ["me"],
+                         "документ в Active Doc не завантажувався")
+        with patch.object(send, "_browser_origin", return_value="http://localhost:8070"):
+            self.assertEqual(self.wizard().action_create()["tag"], "aktiv_doc_sign")
+
+    def test_code_with_other_script_digits_rejected(self):
+        self.connect()
+        wizard = self.wizard()
+        wizard.recipient_code = "١٢٣٤٥٦٧٨"   # «١٢٣٤٥٦٧٨»
+        with self.assertRaises(UserError) as caught:
+            wizard.action_create()
+        self.assertIn("не ЄДРПОУ і не РНОКПП", str(caught.exception))
+
     def test_journal_entry_is_not_a_document(self):
         self.connect()
         entry = self.env["account.move"].create({

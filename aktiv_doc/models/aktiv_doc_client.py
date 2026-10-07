@@ -25,6 +25,12 @@ DEFAULT_URL = "https://doc.aktiv.in.ua"
 TIMEOUT = 30
 
 
+def origin_of(url):
+    """`схема://хост[:порт]` адреси або порожньо — так браузер порівнює сайти між собою."""
+    parts = urlsplit((url or "").strip())
+    return "%s://%s" % (parts.scheme, parts.netloc) if parts.scheme and parts.netloc else ""
+
+
 def _http(method, url, headers=None, json=None, params=None, timeout=TIMEOUT):
     """Один HTTP-запит. Окремою функцією, щоб тести підміняли саме мережу."""
     return requests.request(method, url, headers=headers, json=json, params=params,
@@ -66,8 +72,7 @@ class AktivDocClient(models.AbstractModel):
     @api.model
     def _origin(self, company):
         """`схема://хост[:порт]` сервісу — саме з нього приходить `postMessage` вікна підпису."""
-        parts = urlsplit(self._base_url(company))
-        return "%s://%s" % (parts.scheme, parts.netloc)
+        return origin_of(self._base_url(company))
 
     @api.model
     def _request(self, company, method, path, payload=None, params=None, raw=False,

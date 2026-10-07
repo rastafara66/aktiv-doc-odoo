@@ -7,10 +7,31 @@
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
                 <field name="aktiv_doc_enabled" invisible="True"/>
+                <field name="aktiv_doc_state" invisible="True"/>
                 <button name="action_aktiv_doc_send" type="object" string="Надіслати на підпис"
-                        invisible="not aktiv_doc_enabled or state != 'posted' or move_type == 'entry'"
+                        invisible="not aktiv_doc_enabled or state != 'posted' or move_type == 'entry' or aktiv_doc_state in ('waiting', 'signed', 'sent', 'done')"
                         groups="account.group_account_invoice"
                         help="Підписати друковану форму КЕП тут же, в Odoo, і надіслати контрагенту через Active Doc."/>
+                <button name="action_aktiv_doc_sign_latest" type="object" string="Підписати КЕП"
+                        class="btn-primary" invisible="aktiv_doc_state != 'waiting'"
+                        groups="account.group_account_invoice"
+                        help="Документ уже в Active Doc і чекає нашого підпису — відкрити вікно підпису."/>
+                <button name="action_aktiv_doc_send_signed" type="object" string="Надіслати контрагенту"
+                        class="btn-primary" invisible="aktiv_doc_state != 'signed'"
+                        groups="account.group_account_invoice"
+                        help="Документ підписано, але ще не надіслано: надіслати контрагенту в кабінет Active Doc або листом із посиланням."/>
+            </xpath>
+            <!-- Табличка над документом: у «Рахівнику» власник стану на вкладці не помітив. -->
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-info mb-0 d-flex align-items-center" role="status"
+                     invisible="not aktiv_doc_state">
+                    <i class="fa fa-pencil-square-o me-2" title="Active Doc"/>
+                    <span class="me-1">Active Doc:</span>
+                    <field name="aktiv_doc_state_label" class="fw-bold"/>
+                    <button name="action_aktiv_doc_refresh" type="object" string="Оновити"
+                            class="btn btn-link ms-2 p-0"
+                            help="Перепитати Active Doc про стан документа зараз."/>
+                </div>
             </xpath>
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_aktiv_doc_open" type="object" class="oe_stat_button"
@@ -18,9 +39,42 @@
                         help="Документи Active Doc, надіслані з цього запису, і їхній стан.">
                     <div class="o_stat_info">
                         <span class="o_stat_value"><field name="aktiv_doc_count"/></span>
-                        <span class="o_stat_text"><field name="aktiv_doc_state_label"/></span>
+                        <span class="o_stat_text">Active Doc</span>
                     </div>
                 </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Колонка «Active Doc» поруч зі «Стан» — у списках рахунків покупцям і постачальникам. -->
+    <record id="view_invoice_tree_aktiv_doc" model="ir.ui.view">
+        <field name="name">account.invoice.list.aktiv.doc</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <field name="status_in_payment" position="after">
+                <field name="aktiv_doc_state" widget="badge" optional="show"
+                       decoration-warning="aktiv_doc_state == 'waiting'"
+                       decoration-info="aktiv_doc_state in ('signed', 'sent')"
+                       decoration-success="aktiv_doc_state == 'done'"
+                       decoration-danger="aktiv_doc_state == 'rejected'"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_account_invoice_filter_aktiv_doc" model="ir.ui.view">
+        <field name="name">account.invoice.search.aktiv.doc</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_invoice_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="aktiv_doc_waiting_partner" string="Active Doc: чекає контрагента"
+                        domain="[('aktiv_doc_state', '=', 'sent')]"/>
+                <filter name="aktiv_doc_done" string="Active Doc: підписано обома"
+                        domain="[('aktiv_doc_state', '=', 'done')]"/>
+                <filter name="group_aktiv_doc_state" string="Active Doc"
+                        context="{'group_by': 'aktiv_doc_state'}"/>
             </xpath>
         </field>
     </record>
