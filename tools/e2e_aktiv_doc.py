@@ -209,7 +209,11 @@ def main():
     print("0. Дві чисті бази з account + aktiv_doc")
     for db in (DB_A, DB_B):
         make_db(db)
+    # Фільтр баз — явно: Odoo під Windows ще при імпорті читає `odoo.conf` поруч з
+    # odoo-bin, а `-c` перекриває лише свої ключі. У збірці 18 там `dbfilter = .*18$`
+    # служби — і сервер відповідав «Database not found» на щойно створені бази.
     server = subprocess.Popen(odoo_cmd("--max-cron-threads=0", "--http-port=8070",
+                                       "--db-filter=^(%s|%s)$" % (DB_A, DB_B),
                                        "--logfile=" + str(LOG)), env=odoo_env(),
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
