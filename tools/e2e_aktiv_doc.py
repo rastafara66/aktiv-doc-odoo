@@ -24,6 +24,7 @@ import io
 import json
 import os
 import pathlib
+import re
 import socket
 import subprocess
 import sys
@@ -40,10 +41,24 @@ for _s in (sys.stdout, sys.stderr):
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 SECRETS = REPO / "e2e.local"
-ODOO = pathlib.Path(os.environ.get("ODOO_ROOT", r"C:\odoo19"))
-PY = ODOO / ".venv" / "Scripts" / "python.exe"
-ADDONS = ",".join([str(ODOO / "odoo" / "addons"), str(ODOO / "custom_addons"),
-                   str(ODOO / "my_addons"), str(REPO)])
+# Серія — з маніфесту гілки, що лежить на диску: 19.0 ганяється збіркою C:\odoo19, 18.0 —
+# C:\Odoo\odoo18. Конфіг (постгрес, порт 8070, data_dir) — один, від 19: служба 18 ходить у
+# постгрес користувачем, якого в локальному кластері немає.
+SERIES = ".".join(re.search(r"'version':\s*'([0-9]+\.[0-9]+)",
+                            (REPO / "aktiv_doc" / "__manifest__.py").read_text("utf-8"))
+                  .group(1).split(".")[:2])
+CONF = pathlib.Path(r"C:\odoo19\odoo.conf")
+if SERIES == "18.0":
+    ODOO = pathlib.Path(os.environ.get("ODOO_ROOT", r"C:\Odoo\odoo18\server"))
+    PY = ODOO.parent / "python" / "python.exe"
+    STOCK = [ODOO / "odoo" / "addons"]
+    WKHTMLTOPDF = ODOO.parent / "thirdparty"
+else:
+    ODOO = pathlib.Path(os.environ.get("ODOO_ROOT", r"C:\odoo19"))
+    PY = ODOO / ".venv" / "Scripts" / "python.exe"
+    STOCK = [ODOO / "odoo" / "addons", ODOO / "custom_addons", ODOO / "my_addons"]
+    WKHTMLTOPDF = ODOO / "wkhtmltox" / "bin"
+ADDONS = ",".join([str(p) for p in STOCK] + [str(REPO)])
 URL = "http://localhost:8070"
 DB_A, DB_B = "tmp_adoc_e2e_a", "tmp_adoc_e2e_b"
 ORG_A, ORG_B = "Тестова база «Актив Doc» А", "Тестова база «Актив Doc» Б"
@@ -62,12 +77,12 @@ def check(cond, what):
 
 def odoo_env():
     env = dict(os.environ)
-    env["PATH"] = str(ODOO / "wkhtmltox" / "bin") + os.pathsep + env.get("PATH", "")
+    env["PATH"] = str(WKHTMLTOPDF) + os.pathsep + env.get("PATH", "")
     return env
 
 
 def odoo_cmd(*args):
-    return [str(PY), str(ODOO / "odoo-bin"), "-c", str(ODOO / "odoo.conf"),
+    return [str(PY), str(ODOO / "odoo-bin"), "-c", str(CONF),
             "--addons-path=" + ADDONS, *args]
 
 

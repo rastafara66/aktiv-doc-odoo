@@ -31,9 +31,10 @@ MONTHS = ["January", "February", "March", "April", "May", "June", "July", "Augus
 MONTHS_UK = ["січень", "лютий", "березень", "квітень", "травень", "червень", "липень",
              "серпень", "вересень", "жовтень", "листопад", "грудень"]
 
-#: Що нового, новіше першим: (версія, місяць, рік, англійською, українською). Сухо (§3).
+#: Що нового, новіше першим: (версія без серії, місяць, рік, англійською, українською).
+#: Сухо (§3). Серію дописує `news()` з маніфесту, тож у гілках 18.0 і 19.0 файл однаковий.
 NEWS = [
-    ("19.0.1.0.1", "October", 2026,
+    ("1.0.1", "October", 2026,
      "First release: send for signature from invoices, signing inside Odoo, incoming "
      "documents, the signed archive on the invoice, an Active Doc column in the invoice "
      "list, update check.",
@@ -94,7 +95,7 @@ EN = {
     "title": "Sign invoices with KEP and send them &mdash; without leaving Odoo",
     "subtitle": "Qualified electronic signature and document exchange with your "
                 "counterparties, through the Active Doc service",
-    "meta": "Version %(version)s &middot; LGPL-3 &middot; free &middot; Odoo 19",
+    "meta": "Version %(version)s &middot; LGPL-3 &middot; free &middot; Odoo %(odoo)s",
     "blocks": [
         ("", "WARNING"),
         ("If you came from 1C / BAS",
@@ -169,7 +170,7 @@ UK = {
     "title": "Рахунки підписуються КЕП і йдуть контрагенту — не виходячи з Odoo",
     "subtitle": "Кваліфікований електронний підпис і обмін документами з контрагентами "
                 "через сервіс Active Doc",
-    "meta": "LGPL-3 &middot; безкоштовно &middot; Odoo 19",
+    "meta": "LGPL-3 &middot; безкоштовно &middot; Odoo %(odoo)s",
     "blocks": [
         ("", "WARNING"),
         ("Якщо ви прийшли з 1С / BAS",
@@ -259,15 +260,15 @@ def shots(items):
     return "".join(rows)
 
 
-def news(lang):
+def news(lang, series):
     out = []
     for index, (version, month, year, en, uk) in enumerate(NEWS):
         border = "2px solid #ffd25a" if index == 0 else "1px solid #cfd9e8"
         names = MONTHS if lang == "en" else MONTHS_UK
         when = "%s %d" % (names[MONTHS.index(month)], year)
         out.append('      <div style="border:%s;border-radius:8px;padding:12px 16px;'
-                   'margin-bottom:10px;">\n        <b>%s</b> &mdash; %s<br/>\n        %s\n'
-                   '      </div>\n' % (border, version, when, en if lang == "en" else uk))
+                   'margin-bottom:10px;">\n        <b>%s.%s</b> &mdash; %s<br/>\n        %s\n'
+                   '      </div>\n' % (border, series, version, when, en if lang == "en" else uk))
     return "".join(out)
 
 
@@ -298,7 +299,7 @@ def half(spec, lang, values):
             if body == "SHOTS":
                 body = shots(spec["shots"])
             elif body == "NEWS":
-                body = news(lang)
+                body = news(lang, values["series"])
             elif body == "FAMILY":
                 body = family(spec, values)
             elif body == "WARNING":
@@ -316,7 +317,9 @@ def half(spec, lang, values):
 
 def build():
     data = manifest()
-    values = {"version": data["version"], "support": data["support"], "accent": ACCENT,
+    series = ".".join(data["version"].split(".")[:2])
+    values = {"version": data["version"], "series": series, "odoo": series.split(".")[0],
+              "support": data["support"], "accent": ACCENT,
               "catalog": CATALOG, "site": SITE, "adoc": ADOC}
     page = [
         '<section class="oe_container">\n',
