@@ -184,7 +184,9 @@ def sign_in_window(page, key_file, cert_file, password, shot_name=None):
 def login(browser, db, base=URL):
     ctx = browser.new_context(locale="uk-UA", viewport={"width": 1400, "height": 1300})
     page = ctx.new_page()
-    page.goto("%s/web/login?db=%s" % (base, db))
+    # `login=` у адресі — і форма видима вже з сервера: в Odoo 18 вона рендериться з
+    # `d-none`, і показує її лише JS перемикача користувачів.
+    page.goto("%s/web/login?db=%s&login=admin" % (base, db))
     try:
         page.locator("input[name=login]").wait_for(state="visible", timeout=60000)
     except Exception:
