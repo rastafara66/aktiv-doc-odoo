@@ -18,6 +18,7 @@
 import ast
 import io
 import os
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -33,8 +34,9 @@ MONTHS_UK = ["січень", "лютий", "березень", "квітень",
 
 #: Що нового, новіше першим: (версія без серії, місяць, рік, англійською, українською).
 #: Сухо (§3). Серію дописує `news()` з маніфесту, тож у гілках 18.0 і 19.0 файл однаковий.
+#: Діапазон білдів — «1.0.0 – 1.0.2» (білд лише опису запису не додає, §3).
 NEWS = [
-    ("1.0.1", "October", 2026,
+    ("1.0.0 – 1.0.2", "October", 2026,
      "First release: send for signature from invoices, signing inside Odoo, incoming "
      "documents, the signed archive on the invoice, an Active Doc column in the invoice "
      "list, update check.",
@@ -266,9 +268,10 @@ def news(lang, series):
         border = "2px solid #ffd25a" if index == 0 else "1px solid #cfd9e8"
         names = MONTHS if lang == "en" else MONTHS_UK
         when = "%s %d" % (names[MONTHS.index(month)], year)
+        label = " &ndash; ".join("%s.%s" % (series, part.strip()) for part in version.split("–"))
         out.append('      <div style="border:%s;border-radius:8px;padding:12px 16px;'
-                   'margin-bottom:10px;">\n        <b>%s.%s</b> &mdash; %s<br/>\n        %s\n'
-                   '      </div>\n' % (border, series, version, when, en if lang == "en" else uk))
+                   'margin-bottom:10px;">\n        <b>%s</b> &mdash; %s<br/>\n        %s\n'
+                   '      </div>\n' % (border, label, when, en if lang == "en" else uk))
     return "".join(out)
 
 
@@ -336,7 +339,30 @@ def build():
         half(UK, "uk", values),
         '</section>\n',
     ]
-    return ascii_only("".join(page))
+    footer = desc_footer()
+    if footer is None:
+        raise SystemExit("підвал опису — з 3A tools/store/add_desc_footer.py, а 3A не знайдено "
+                         "(TOOLS_3A_STORE=<тека 3A>/tools/store); опис не записано")
+    return footer.with_footer(ascii_only("".join(page)))
+
+
+def desc_footer():
+    """Модуль підвалу опису з 3A (`tools/store/add_desc_footer.py`) або None.
+
+    В кінці опису КОЖНОГО додатка — розробник, пошта й уся лінійка (правило власника
+    08.10.2026, 3A STORE-CONVENTIONS §2-квінт). Текст підвалу один на всі репо й живе лише в
+    3A; шукаємо його поруч із репо, у ~/Projects/adealer, на VPS або за `TOOLS_3A_STORE`.
+    """
+    for folder in (os.environ.get("TOOLS_3A_STORE"),
+                   os.path.join(os.path.dirname(ROOT), "adealer", "tools", "store"),
+                   os.path.join(os.path.expanduser("~"), "Projects", "adealer", "tools", "store"),
+                   "/home/ubuntu/3A/tools/store"):
+        if folder and os.path.isfile(os.path.join(folder, "add_desc_footer.py")):
+            if folder not in sys.path:
+                sys.path.insert(0, folder)
+            import add_desc_footer  # noqa: E402
+            return add_desc_footer
+    return None
 
 
 def main():
