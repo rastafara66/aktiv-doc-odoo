@@ -41,7 +41,7 @@ class ResConfigSettings(models.TransientModel):
             lines.append(_("Документи організації підписують %s особи.", org["signs_required"]))
         notice_type = "success"
         allowed = _origin_of(key.get("origin"))
-        ours = _origin_of(self.env["ir.config_parameter"].sudo().get_param("web.base.url"))
+        ours = _origin_of(self.env["ir.config_parameter"].sudo().get_str("web.base.url"))
         if allowed and ours and allowed != ours:
             notice_type = "warning"
             lines.append(_(

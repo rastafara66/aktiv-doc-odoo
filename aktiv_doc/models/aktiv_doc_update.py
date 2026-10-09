@@ -62,7 +62,7 @@ class AktivDocUpdate(models.AbstractModel):
     @api.model
     def _enabled(self):
         # Незаданий параметр — «увімкнено»: запит не несе нічого про користувача.
-        return self.env["ir.config_parameter"].sudo().get_param(
+        return self.env["ir.config_parameter"].sudo().get_str(
             PARAM_UPDATE_CHECK, "on") != "off"
 
     @api.model
@@ -77,7 +77,7 @@ class AktivDocUpdate(models.AbstractModel):
         if not self._enabled():
             return False, _("Перевірку версій вимкнено.")
         params = self.env["ir.config_parameter"].sudo()
-        url = params.get_param(PARAM_URL, DEFAULT_URL)
+        url = params.get_str(PARAM_URL, DEFAULT_URL)
         if not url:
             return False, _("Адресу перевірки версій не задано.")
         series = self._our_series()
@@ -99,8 +99,8 @@ class AktivDocUpdate(models.AbstractModel):
                  and (not series or series_of(published[name]) == series)}
         if not clean:
             return False, _("%s не знає про ці модулі.", url)
-        params.set_param(PARAM_LATEST, json.dumps(clean))
-        params.set_param(PARAM_CHECKED, fields.Datetime.to_string(fields.Datetime.now()))
+        params.set_str(PARAM_LATEST, json.dumps(clean))
+        params.set_str(PARAM_CHECKED, fields.Datetime.to_string(fields.Datetime.now()))
         return True, ""
 
     @api.model
@@ -113,7 +113,7 @@ class AktivDocUpdate(models.AbstractModel):
 
     @api.model
     def _published(self):
-        raw = self.env["ir.config_parameter"].sudo().get_param(PARAM_LATEST)
+        raw = self.env["ir.config_parameter"].sudo().get_str(PARAM_LATEST)
         try:
             return json.loads(raw) if raw else {}
         except ValueError:

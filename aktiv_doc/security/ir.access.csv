@@ -1,0 +1,5 @@
+id,name,model_id,group_id/id,operation,domain
+access_aktiv_doc_document_user,aktiv.doc.document.user,aktiv.doc.document,account.group_account_invoice,cru,
+access_aktiv_doc_document_manager,aktiv.doc.document.manager,aktiv.doc.document,account.group_account_manager,crud,
+access_aktiv_doc_send_user,aktiv.doc.send.user,aktiv.doc.send,account.group_account_invoice,crud,
+access_aktiv_doc_reject_user,aktiv.doc.reject.user,aktiv.doc.reject,account.group_account_invoice,crud,

@@ -35,7 +35,7 @@ class TestUpdateCheck(TransactionCase):
         self.assertTrue(ok)
         self.assertEqual(get.call_args.kwargs["params"], {"series": self.series})
         self.assertNotIn("someone_else", json.loads(
-            self.env["ir.config_parameter"].get_param(updating.PARAM_LATEST)))
+            self.env["ir.config_parameter"].get_str(updating.PARAM_LATEST)))
         message, url = self.Update.update_banner()
         self.assertIn(newer, message)
         self.assertEqual(url, updating.STORE_URL % (self.series, "aktiv_doc"))
@@ -58,7 +58,7 @@ class TestUpdateCheck(TransactionCase):
             self.assertFalse(self.Update._cron_check())
 
     def test_switched_off(self):
-        self.env["ir.config_parameter"].set_param(updating.PARAM_UPDATE_CHECK, "off")
+        self.env["ir.config_parameter"].set_str(updating.PARAM_UPDATE_CHECK, "off")
         with patch("requests.get") as get:
             ok, _reason = self.Update._run_check()
         self.assertFalse(ok)

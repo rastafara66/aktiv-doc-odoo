@@ -303,7 +303,7 @@ class TestAktivDoc(AccountTestInvoicingCommon):
         self.env["aktiv.doc.document"]._cron_sync()   # не падає
 
     def test_settings_check_warns_about_origin(self):
-        self.env["ir.config_parameter"].sudo().set_param("web.base.url", "https://erp.example.com")
+        self.env["ir.config_parameter"].sudo().set_str("web.base.url", "https://erp.example.com")
         settings = self.env["res.config.settings"].create({"aktiv_doc_key": KEY})
         result = settings.action_aktiv_doc_check()
         params = result["params"]
@@ -312,7 +312,7 @@ class TestAktivDoc(AccountTestInvoicingCommon):
         self.assertIn("вікно підпису тут не відкриється", params["message"])
         self.assertEqual(self.env.company.sudo().aktiv_doc_key, KEY)
 
-        self.env["ir.config_parameter"].sudo().set_param("web.base.url", "http://localhost:8070")
+        self.env["ir.config_parameter"].sudo().set_str("web.base.url", "http://localhost:8070")
         self.assertEqual(settings.action_aktiv_doc_check()["params"]["type"], "success")
 
     def test_signed_document_cannot_be_deleted(self):

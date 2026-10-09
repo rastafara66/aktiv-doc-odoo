@@ -476,7 +476,7 @@ class AktivDocDocument(models.Model):
     def _record_from_ref(self, external_ref):
         """Запис обліку з `external_ref`, якщо документ створено з ЦІЄЇ бази."""
         parts = (external_ref or "").split("·")
-        uuid = self.env["ir.config_parameter"].sudo().get_param("database.uuid")
+        uuid = self.env["ir.config_parameter"].sudo().get_str("database.uuid")
         if len(parts) != 3 or parts[0] != uuid or parts[1] not in self.env:
             return None
         try:
@@ -525,7 +525,7 @@ class AktivDocDocument(models.Model):
                             email):
         company = record.company_id if "company_id" in record._fields and record.company_id \
             else self.env.company
-        uuid = self.env["ir.config_parameter"].sudo().get_param("database.uuid")
+        uuid = self.env["ir.config_parameter"].sudo().get_str("database.uuid")
         data = self._client()._request(company, "POST", "documents", payload={
             "name": name,
             "file_name": file_name,
