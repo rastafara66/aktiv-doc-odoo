@@ -144,6 +144,16 @@ class Session:
         return self.rpc("/web/dataset/call_kw/%s/%s" % (model, method),
                         {"model": model, "method": method, "args": list(args), "kwargs": kwargs})
 
+    def set_system_param(self, key, value):
+        """Системний параметр: `set_param` (Odoo 18/19) чи `set_str` (Odoo 20) — за тим, що є
+        в базі. Конвертер серії переписує виклики в коді, а назву методу рядком у RPC — ні."""
+        try:
+            return self.call("ir.config_parameter", "set_param", key, value)
+        except RuntimeError as error:
+            if "does not exist" not in str(error):
+                raise
+            return self.call("ir.config_parameter", "set_str", key, value)
+
 
 def make_db(db):
     # Українська — як у всієї лінійки «Актив»: інакше кнопки Odoo англійські поруч
@@ -167,7 +177,7 @@ def setup_db(db, org, code, key, other_org, other_code):
         else "vat"
     s.call("res.company", "write", [company], {"name": org, registry: code,
                                                "aktiv_doc_key": key})
-    s.call("ir.config_parameter", "set_param", "web.base.url", URL)
+    s.set_system_param("web.base.url", URL)
     s.call("res.users", "write", [2], {"lang": "uk_UA", "tz": "Europe/Kyiv"})
     # Україна й гривня — до першого документа (потім валюту компанії Odoo не змінить):
     # інакше в PDF на знімку «Сполучені Штати» і «$».
