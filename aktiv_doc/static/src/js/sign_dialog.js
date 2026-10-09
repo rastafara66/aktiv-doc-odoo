@@ -8,10 +8,11 @@
  * повідомлення (origin сервісу) і про ЯКИЙ документ, а сам стан однаково
  * перепитуємо зі свого сервера — повідомленню з браузера на слово не віримо.
  */
-import { Component, onMounted, onWillUnmount, useState } from "@odoo/owl";
+import { Component, onMounted, onWillUnmount } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { componentProps, declareProps, useReactive } from "./owl_compat";
 
 /** Чи це справжнє «підписано» від Active Doc саме про цей документ. */
 export function isSignedMessage(event, origin, adocId) {
@@ -26,21 +27,12 @@ export function isSignedMessage(event, origin, adocId) {
 export class AktivDocSignDialog extends Component {
     static template = "aktiv_doc.SignDialog";
     static components = { Dialog };
-    static props = {
-        url: String,
-        origin: String,
-        allowedOrigin: { type: String, optional: true },
-        adocId: Number,
-        docId: Number,
-        title: { type: String, optional: true },
-        shared: Object,
-        close: Function,
-    };
+    props = componentProps(this);
 
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
-        this.state = useState({ busy: false });
+        this.state = useReactive({ busy: false });
         // Ключ дозволяє вбудовувати вікно лише з однієї адреси бази (CSP
         // frame-ancestors). Відкрито звідкись інакше — браузер покаже порожнечу,
         // тож кажемо людині, у чому справа, замість порожнього вікна.
@@ -68,6 +60,16 @@ export class AktivDocSignDialog extends Component {
         return window.location.origin;
     }
 }
+declareProps(AktivDocSignDialog, {
+    url: String,
+    origin: String,
+    allowedOrigin: { type: String, optional: true },
+    adocId: Number,
+    docId: Number,
+    title: { type: String, optional: true },
+    shared: Object,
+    close: Function,
+});
 
 /** Клієнтська дія `aktiv_doc_sign`: (картка документа під низом) + вікно підпису. */
 async function aktivDocSign(env, action) {
