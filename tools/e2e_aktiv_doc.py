@@ -222,6 +222,10 @@ def sign_in_window(page, key_file, cert_file, password, shot_name=None):
     frame.locator("#sign").click()
     # Наше вікно закривається само, щойно Active Doc сказав «adoc:signed».
     page.locator(".o_aktiv_doc_sign_frame").wait_for(state="detached", timeout=120000)
+    # iframe зникає вже тоді, коли вікно перемкнулось на «оновлюю стан документа…», — до
+    # кінця `action_refresh`. Стан читаємо, коли зник і цей напис (09.10.2026: на Odoo 20
+    # перевірка встигала прочитати старий стан Б раніше, ніж сервер його оновив).
+    page.get_by_text("оновлюю стан документа").wait_for(state="hidden", timeout=120000)
 
 
 def login(browser, db, base=None):
