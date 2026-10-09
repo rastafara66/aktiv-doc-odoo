@@ -15,7 +15,7 @@
                     ключа адресу <code t-out="this.here"/>.</p>
             </div>
             <div t-elif="this.state.busy" class="p-5 text-center text-muted">
-                <i class="fa fa-spinner fa-spin me-2"/>Підписано — оновлюю стан документа…
+                <i class="oi oi-spin me-2" data-icon="autorenew"/>Підписано — оновлюю стан документа…
             </div>
             <iframe t-else="" t-att-src="this.props.url" class="o_aktiv_doc_sign_frame d-block w-100 border-0"
                     style="height: 1000px; min-width: 900px;" referrerpolicy="origin"/>

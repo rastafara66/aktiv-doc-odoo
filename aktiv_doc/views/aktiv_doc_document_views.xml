@@ -53,7 +53,7 @@
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_open_record" type="object" class="oe_stat_button"
-                                icon="fa-file-text-o" invisible="not record_ref"
+                                icon="description" invisible="not record_ref"
                                 help="Відкрити рахунок, акт чи накладну, з яких надіслано документ.">
                             <span class="o_stat_text">Документ обліку</span>
                         </button>

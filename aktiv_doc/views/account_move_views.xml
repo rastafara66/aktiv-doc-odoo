@@ -25,7 +25,7 @@
             <xpath expr="//sheet" position="before">
                 <div class="alert alert-info mb-0 d-flex align-items-center" role="status"
                      invisible="not aktiv_doc_state">
-                    <i class="fa fa-pencil-square-o me-2" title="Active Doc"/>
+                    <i class="oi me-2" data-icon="edit_square" title="Active Doc"/>
                     <span class="me-1">Active Doc:</span>
                     <field name="aktiv_doc_state_label" class="fw-bold"/>
                     <button name="action_aktiv_doc_refresh" type="object" string="Оновити"
@@ -35,7 +35,7 @@
             </xpath>
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_aktiv_doc_open" type="object" class="oe_stat_button"
-                        icon="fa-pencil-square-o" invisible="not aktiv_doc_count"
+                        icon="edit_square" invisible="not aktiv_doc_count"
                         help="Документи Active Doc, надіслані з цього запису, і їхній стан.">
                     <div class="o_stat_info">
                         <span class="o_stat_value"><field name="aktiv_doc_count"/></span>
