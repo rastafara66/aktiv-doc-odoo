@@ -1,21 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
+    <!-- Вирази — через `this.`, текст — `t-out`: так шаблон працює і в OWL 2 (Odoo 18/19),
+         і в OWL 3 (Odoo 20), де голих імен і `t-esc` уже немає. -->
     <t t-name="aktiv_doc.SignDialog">
-        <Dialog title="props.title or 'Підпис КЕП — Active Doc'" size="'xl'" footer="false"
+        <Dialog title="this.props.title or 'Підпис КЕП — Active Doc'" size="'xl'" footer="false"
                 bodyClass="'p-0'">
-            <div t-if="blocked" class="alert alert-warning m-3" role="alert">
+            <div t-if="this.blocked" class="alert alert-warning m-3" role="alert">
                 <p class="mb-1"><strong>Вікно підпису тут не відкриється.</strong></p>
                 <p class="mb-1">Чому: ключ API цієї організації дозволяє відкривати вікно підпису
-                    лише з <code t-esc="props.allowedOrigin"/>, а Odoo зараз відкрито з
-                    <code t-esc="here"/>.</p>
+                    лише з <code t-out="this.props.allowedOrigin"/>, а Odoo зараз відкрито з
+                    <code t-out="this.here"/>.</p>
                 <p class="mb-0">Що зробити: відкрийте Odoo за адресою
-                    <code t-esc="props.allowedOrigin"/> або в кабінеті Active Doc вкажіть для
-                    ключа адресу <code t-esc="here"/>.</p>
+                    <code t-out="this.props.allowedOrigin"/> або в кабінеті Active Doc вкажіть для
+                    ключа адресу <code t-out="this.here"/>.</p>
             </div>
-            <div t-elif="state.busy" class="p-5 text-center text-muted">
+            <div t-elif="this.state.busy" class="p-5 text-center text-muted">
                 <i class="fa fa-spinner fa-spin me-2"/>Підписано — оновлюю стан документа…
             </div>
-            <iframe t-else="" t-att-src="props.url" class="o_aktiv_doc_sign_frame d-block w-100 border-0"
+            <iframe t-else="" t-att-src="this.props.url" class="o_aktiv_doc_sign_frame d-block w-100 border-0"
                     style="height: 1000px; min-width: 900px;" referrerpolicy="origin"/>
         </Dialog>
     </t>

@@ -20,6 +20,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 from .aktiv_doc_client import AktivDocError
+from ..tools.series import partner_code_fields, registry_label
 
 _logger = logging.getLogger(__name__)
 
@@ -233,12 +234,14 @@ class AktivDocDocument(models.Model):
 
     @api.model
     def _partner_by_code(self, code, company):
-        """Контрагент за ЄДРПОУ / РНОКПП: у базах буває заповнене одне з полів."""
+        """Контрагент за ЄДРПОУ / РНОКПП: у базах буває заповнене одне з полів (ті, що є в
+        базі: в Odoo 20 «Реєстру компанії» немає)."""
         if not code:
             return self.env["res.partner"]
         Partner = self.env["res.partner"].with_context(active_test=True)
-        domain = ["|", "|", ("company_registry", "=", code), ("ref", "=", code), ("vat", "=", code),
-                  ("company_id", "in", [company.id, False])]
+        names = partner_code_fields(self.env)
+        domain = ["|"] * (len(names) - 1) + [(name, "=", code) for name in names] \
+            + [("company_id", "in", [company.id, False])]
         partners = Partner.search(domain, limit=5)
         return (partners.filtered(lambda p: not p.parent_id) or partners)[:1]
 
@@ -364,8 +367,9 @@ class AktivDocDocument(models.Model):
         if not code:
             problems.append((_("Не вказано код отримувача"),
                              _("Active Doc шукає кабінет контрагента за ЄДРПОУ чи РНОКПП"),
-                             _("впишіть ЄДРПОУ (поле «Реєстр компанії») або РНОКПП у картку "
-                               "контрагента й створіть документ заново")))
+                             _("впишіть ЄДРПОУ (поле «%s») або РНОКПП у картку "
+                               "контрагента й створіть документ заново",
+                               registry_label(self.env))))
         elif not CODE_RE.match(code):
             problems.append((_("Код отримувача «%s» — не ЄДРПОУ і не РНОКПП", code),
                              _("ЄДРПОУ має 8 цифр, РНОКПП — 10"),

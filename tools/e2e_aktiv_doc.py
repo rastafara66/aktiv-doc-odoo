@@ -51,11 +51,22 @@ SERIES = ".".join(re.search(r"'version':\s*'([0-9]+\.[0-9]+)",
                             (REPO / "aktiv_doc" / "__manifest__.py").read_text("utf-8"))
                   .group(1).split(".")[:2])
 CONF = pathlib.Path(r"C:\odoo19\odoo.conf")
+THREE_A = pathlib.Path(os.environ.get("THREE_A", r"C:\Users\chukhin\Projects\adealer"))
+#: Підключення до постгресу й майданчик `db_classes` — як у 3A `run_module_tests.SERIES_DB`:
+#: Odoo 20 хоче PostgreSQL ≥ 16, а робочий кластер — 15, тож для 20.0 окремий на 5434.
+DB_ARGS, SITE = [], "local"
 if SERIES == "18.0":
     ODOO = pathlib.Path(os.environ.get("ODOO_ROOT", r"C:\Odoo\odoo18\server"))
     PY = ODOO.parent / "python" / "python.exe"
     STOCK = [ODOO / "odoo" / "addons"]
     WKHTMLTOPDF = ODOO.parent / "thirdparty"
+elif SERIES == "20.0":
+    ODOO = pathlib.Path(os.environ.get("ODOO_ROOT", r"C:\Odoo\odoo20\server"))
+    PY = ODOO.parent / ".venv" / "Scripts" / "python.exe"
+    STOCK = [ODOO / "odoo" / "addons"]
+    # Своєї wkhtmltopdf збірка 20 не має — та сама, що в 19.
+    WKHTMLTOPDF = pathlib.Path(r"C:\odoo19\wkhtmltox\bin")
+    DB_ARGS, SITE = ["--db_host=127.0.0.1", "--db_port=5434", "--db_user=odoo"], "local20"
 else:
     ODOO = pathlib.Path(os.environ.get("ODOO_ROOT", r"C:\odoo19"))
     PY = ODOO / ".venv" / "Scripts" / "python.exe"
@@ -70,6 +81,12 @@ CODE_A, CODE_B = "00000031", "00000032"
 LOG = REPO / "e2e.local" / "odoo-e2e.log"
 
 problems = []
+#: Обрив з'єднання з локальним сервером — як `CONN_LOST` у 3A `tools/ops/walk_menus.py`.
+#: Причину знайдено 09.10.2026 (3A PITFALLS §4): великий буфер одним `send()` на цій машині
+#: рвався ~60% (переклади ~0,5 МБ після входу). Лікує шар `odoo_win` (сокет частинами, див.
+#: `odoo_env()`); повтор лишається сіткою, і кількість повторів друкується.
+CONN_LOST = re.compile(r"ERR_CONNECTION_RESET|Failed to fetch|ConnectionLostError")
+CONN_TRIES = 3
 
 
 def check(cond, what):
@@ -82,12 +99,19 @@ def check(cond, what):
 def odoo_env():
     env = dict(os.environ)
     env["PATH"] = str(WKHTMLTOPDF) + os.pathsep + env.get("PATH", "")
+    if os.name == "nt":
+        # Шар 3A `tools/ops/odoo_win/sitecustomize.py` (той самий, що в run_module_tests):
+        # велика відповідь — у сокет частинами (одним записом на цій машині рвалась ~60%:
+        # переклади після входу, вигляди рахунків), а файли вкладень Odoo 20 «лише для
+        # читання» видаляються, як на Linux.
+        shim = str(THREE_A / "tools" / "ops" / "odoo_win")
+        env["PYTHONPATH"] = os.pathsep.join(p for p in (shim, env.get("PYTHONPATH")) if p)
     return env
 
 
 def odoo_cmd(*args):
     return [str(PY), str(ODOO / "odoo-bin"), "-c", str(CONF),
-            "--addons-path=" + ADDONS, *args]
+            "--addons-path=" + ADDONS, *DB_ARGS, *args]
 
 
 def port_open(port):
@@ -125,9 +149,9 @@ def make_db(db):
     # Українська — як у всієї лінійки «Актив»: інакше кнопки Odoo англійські поруч
     # із нашими українськими, і знімки магазину виходять мішаниною мов.
     # Без демо-даних: у 18 вони ставляться типово, і з демо-проводками Odoo вже не дає
-    # змінити валюту компанії. Прапорець різний: у 19 `--without-demo` — булевий
+    # змінити валюту компанії. Прапорець різний: у 19 і 20 `--without-demo` — булевий
     # («all» він читає як помилку), у 18 — список модулів, `=all`.
-    no_demo = "--without-demo" if SERIES == "19.0" else "--without-demo=all"
+    no_demo = "--without-demo=all" if SERIES == "18.0" else "--without-demo"
     subprocess.run(odoo_cmd("-d", db, "-i", "account,aktiv_doc", "--load-language=uk_UA",
                             no_demo, "--stop-after-init", "--log-level=warn"), check=True,
                    env=odoo_env(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -137,7 +161,11 @@ def make_db(db):
 def setup_db(db, org, code, key, other_org, other_code):
     s = Session(db)
     company = s.call("res.users", "read", [2], ["company_id"])[0]["company_id"][0]
-    s.call("res.company", "write", [company], {"name": org, "company_registry": code,
+    # ЄДРПОУ — у поле, яке є в серії: в Odoo 20 `company_registry` немає ні в компанії, ні в
+    # контакта, код — у `vat` (як `aktiv_doc/tools/series.py::registry_field`).
+    registry = "company_registry" if s.call("res.partner", "fields_get", ["company_registry"]) \
+        else "vat"
+    s.call("res.company", "write", [company], {"name": org, registry: code,
                                                "aktiv_doc_key": key})
     s.call("ir.config_parameter", "set_param", "web.base.url", URL)
     s.call("res.users", "write", [2], {"lang": "uk_UA", "tz": "Europe/Kyiv"})
@@ -149,7 +177,7 @@ def setup_db(db, org, code, key, other_org, other_code):
     s.call("res.currency", "write", uah, {"active": True})
     s.call("res.company", "write", [company], {"country_id": ukraine[0], "currency_id": uah[0]})
     partner = s.call("res.partner", "create", {"name": other_org, "is_company": True,
-                                               "company_registry": other_code})
+                                               registry: other_code})
     return s, company, partner
 
 
@@ -193,6 +221,13 @@ def login(browser, db, base=None):
     ctx = browser.new_context(locale="uk-UA", viewport={"width": 1400, "height": 1300})
     page = ctx.new_page()
     PAGES.append(page)
+    # Порожня сторінка без навбару нічого не каже — збираємо, що сказав сам браузер.
+    errors = []
+    page.on("pageerror", lambda exc: errors.append("JS: %s" % exc))
+    page.on("console", lambda msg: errors.append("console.error: %s" % msg.text)
+            if msg.type == "error" else None)
+    page.on("requestfailed", lambda req: errors.append("запит %s %s: %s" % (
+        req.method, req.url.replace(base, ""), req.failure)))
     # Вхід — JSON-RPC-ом у контексті браузера (кука сесії спільна з його вкладками), а не
     # формою: перевіряємо підпис, а не сторінку входу. Форма в Odoo 18 рендериться
     # прихованою (її відкриває JS), і натискання «Вхід» на свіжій базі там двічі не
@@ -207,8 +242,31 @@ def login(browser, db, base=None):
     # Перший захід у свіжу базу збирає ассети бекенда — у 18 ~40 с, довше за типові 30 с
     # `goto`, що чекає подію load. Тож чекаємо DOM, а готовність — за навбаром.
     page.goto(base + "/odoo", wait_until="domcontentloaded", timeout=180000)
-    page.locator(".o_main_navbar").wait_for(timeout=180000)
-    return ctx, page
+    # 🔴 Локальний Odoo на Windows зрідка рве з'єднання (3A PITFALLS §4): обірвався один
+    # запит старту — веб-клієнт не монтується, сторінка лишається порожньою назавжди
+    # (09.10.2026: двічі з трьох прогонів на 19, щоразу на іншій базі; у журналі сервера —
+    # лише 200). Як і 3A `walk_menus.py`: такий вхід повторюємо, а кількість повторів
+    # друкуємо — нестабільність видно, а не сховано.
+    seen = []
+    for attempt in range(CONN_TRIES):
+        deadline = time.time() + 180
+        while time.time() < deadline:
+            if page.locator(".o_main_navbar").is_visible():
+                if attempt:
+                    print("  (вхід у %s: повторів після обриву з'єднання: %d; обірвалось: %s)"
+                          % (db, attempt, " | ".join(e[:200] for e in seen[:3])))
+                return ctx, page
+            if any(CONN_LOST.search(e) for e in errors):
+                break
+            page.wait_for_timeout(1000)
+        else:
+            break
+        seen, errors[:] = list(errors), []
+        if attempt + 1 < CONN_TRIES:
+            page.reload(wait_until="domcontentloaded", timeout=180000)
+    print("  🔴 інтерфейс %s не змонтувався; браузер сказав: %s"
+          % (db, " | ".join(e[:300] for e in (errors or seen)[:6]) or "нічого"))
+    raise RuntimeError("інтерфейс %s не змонтувався" % db)
 
 
 def main():
@@ -342,7 +400,12 @@ def main():
                            ("mimetype", "=", "application/zip")], fields=["id"])
             check(len(zips) == 1, "архів прикріплено до рахунку")
             if zips:
-                raw = a.call("ir.attachment", "read", [zips[0]["id"]], ["datas"])[0]["datas"]
+                # `datas` в Odoo 20 прибрано — є `raw`; двійкове поле Odoo 20 віддає словником
+                # {"content": base64, "size": …}, а 18/19 — рядком base64.
+                field = "datas" if a.call("ir.attachment", "fields_get", ["datas"]) else "raw"
+                raw = a.call("ir.attachment", "read", [zips[0]["id"]], [field])[0][field]
+                if isinstance(raw, dict):
+                    raw = raw["content"]
                 import base64
                 names = zipfile.ZipFile(io.BytesIO(base64.b64decode(raw))).namelist()
                 check(len([n for n in names if ".sign" in n]) == 2 and "protokol.html" in names,
@@ -401,9 +464,8 @@ def main():
         except subprocess.TimeoutExpired:
             server.kill()
         if not args.keep:
-            three_a = pathlib.Path(os.environ.get("THREE_A", r"C:\Users\chukhin\Projects\adealer"))
-            subprocess.run([sys.executable, str(three_a / "tools" / "ops" / "db_classes.py"),
-                            "drop", DB_A, DB_B], stdout=subprocess.DEVNULL)
+            subprocess.run([sys.executable, str(THREE_A / "tools" / "ops" / "db_classes.py"),
+                            "drop", "--site", SITE, DB_A, DB_B], stdout=subprocess.DEVNULL)
     print("\n✅ «Active Doc»: наскрізно пройдено" if not problems
           else "\n🔴 «Active Doc»: не пройдено %d" % len(problems))
     return 1 if problems else 0

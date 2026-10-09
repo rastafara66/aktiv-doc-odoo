@@ -36,13 +36,13 @@ MONTHS_UK = ["січень", "лютий", "березень", "квітень",
 #: Сухо (§3). Серію дописує `news()` з маніфесту, тож у гілках 18.0 і 19.0 файл однаковий.
 #: Діапазон білдів — «1.0.0 – 1.0.2» (білд лише опису запису не додає, §3).
 NEWS = [
-    ("1.0.0 – 1.0.2", "October", 2026,
+    ("1.0.0 – 1.0.3", "October", 2026,
      "First release: send for signature from invoices, signing inside Odoo, incoming "
      "documents, the signed archive on the invoice, an Active Doc column in the invoice "
-     "list, update check.",
+     "list, update check. Bug fixes.",
      "Перша версія: надсилання на підпис із рахунків, підпис усередині Odoo, вхідні "
      "документи, підписаний архів у рахунку, колонка «Active Doc» у списку рахунків, "
-     "перевірка версій."),
+     "перевірка версій. Виправлено помилки."),
 ]
 
 FAMILY_EN = [

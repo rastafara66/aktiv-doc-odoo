@@ -15,6 +15,7 @@ from odoo.exceptions import UserError
 from odoo.tests import tagged
 
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
+from odoo.addons.aktiv_doc.tools.series import attachment_content, registry_field
 
 HTTP = "odoo.addons.aktiv_doc.models.aktiv_doc_client._http"
 PDF = b"%PDF-1.4 test document"
@@ -114,7 +115,8 @@ class TestAktivDoc(AccountTestInvoicingCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.partner_a.write({"company_registry": "12345678", "email": "buyer@example.com"})
+        # ЄДРПОУ — у поле, яке є в серії (в Odoo 20 «Реєстру компанії» немає, код — у `vat`).
+        cls.partner_a.write({registry_field(cls.env): "12345678", "email": "buyer@example.com"})
         cls.invoice = cls.init_invoice("out_invoice", partner=cls.partner_a,
                                        products=[cls.product_a], post=True)
 
@@ -177,7 +179,7 @@ class TestAktivDoc(AccountTestInvoicingCommon):
         self.assertEqual(doc.record_ref, self.invoice)
         self.assertEqual(doc.state, "draft")
         self.assertEqual(doc.counterparty_code, "12345678")
-        self.assertEqual(base64.b64decode(doc.attachment_id.datas), PDF)
+        self.assertEqual(attachment_content(doc.attachment_id), PDF)
         # Ключ — лише в заголовку; запис обліку — у external_ref.
         method, path, headers, payload, params = self.adoc.calls[0]
         self.assertEqual((method, path), ("POST", "documents"))
@@ -246,7 +248,7 @@ class TestAktivDoc(AccountTestInvoicingCommon):
         self.assertEqual(docs.mapped("name"), ["Акт 7", "Акт 8"])
         self.assertEqual(docs[0].partner_id, supplier)
         self.assertEqual(docs[0].counterparty_code, "87654321")
-        self.assertEqual(base64.b64decode(docs[0].attachment_id.datas), PDF)
+        self.assertEqual(attachment_content(docs[0].attachment_id), PDF)
         params = [call[4] for call in self.adoc.calls if call[1] == "documents"]
         self.assertEqual(params[1], {"changed_since": "2026-10-07T07:30:00Z"})
         self.assertEqual(self.env.company.sudo().aktiv_doc_cursor, "2026-10-07T07:40:00Z")

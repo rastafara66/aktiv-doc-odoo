@@ -8,6 +8,7 @@ from odoo.exceptions import UserError
 
 from ..models.aktiv_doc_client import AktivDocError, origin_of
 from ..models.aktiv_doc_document import CODE_RE, format_problems
+from ..tools.series import binary_content, partner_code_fields, registry_label
 
 #: Типова друкована форма для моделі — найзвичніша, якщо їх кілька.
 DEFAULT_REPORTS = {"account.move": "account.account_invoices"}
@@ -80,8 +81,10 @@ class AktivDocSend(models.TransientModel):
     @api.model
     def _recipient_of(self, partner):
         # ЄДРПОУ у базах буває або в «Реєстрі компанії», або в «Довідці» — беремо
-        # заповнене; РНОКПП фізособи — часто в податковому номері.
-        code = next((value.strip() for value in (partner.company_registry, partner.ref, partner.vat)
+        # заповнене; РНОКПП фізособи — часто в податковому номері. В Odoo 20 «Реєстру
+        # компанії» немає — поля беремо ті, що є в базі.
+        values = (partner[name] for name in partner_code_fields(self.env))
+        code = next((value.strip() for value in values
                      if value and CODE_RE.match(value.strip())), "")
         return {"recipient_code": code, "recipient_name": partner.name or "",
                 "recipient_email": partner.email or ""}
@@ -136,8 +139,8 @@ class AktivDocSend(models.TransientModel):
         if not code:
             problems.append((_("Не вказано ЄДРПОУ / РНОКПП отримувача"),
                              _("за цим кодом Active Doc знаходить кабінет контрагента"),
-                             _("впишіть код тут або в картку контрагента (поле «Реєстр "
-                               "компанії»)")))
+                             _("впишіть код тут або в картку контрагента (поле «%s»)",
+                               registry_label(self.env))))
         elif not CODE_RE.match(code):
             problems.append((_("«%s» — не ЄДРПОУ і не РНОКПП", code),
                              _("ЄДРПОУ має 8 цифр, РНОКПП — 10"),
@@ -212,7 +215,8 @@ class AktivDocSend(models.TransientModel):
         if not self.report_id or not self._record():
             raise UserError(format_problems(self.env, _("Переглянути не вийде."),
                                             self._problems()))
-        self.write({"preview_pdf": base64.b64encode(self._render_pdf()),
+        # base64 рядком: `bytes` у двійкове поле Odoo 20 не приймає, рядок читає кожна серія.
+        self.write({"preview_pdf": base64.b64encode(self._render_pdf()).decode("ascii"),
                     "preview_name": self._file_name()})
         return self._reopen()
 
@@ -236,7 +240,7 @@ class AktivDocSend(models.TransientModel):
         if problems:
             raise UserError(format_problems(self.env, _("Документ не створено."), problems))
         record = self._record()
-        pdf = base64.b64decode(self.preview_pdf) if self.preview_pdf else self._render_pdf()
+        pdf = binary_content(self.preview_pdf) if self.preview_pdf else self._render_pdf()
         doc = self.env["aktiv.doc.document"]._create_from_record(
             record, pdf, self._file_name(), self.doc_name.strip(),
             self.partner_id.commercial_partner_id if self.partner_id else None,
