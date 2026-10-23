@@ -12,6 +12,19 @@
         <field name="active" eval="True"/>
     </record>
 
+    <!-- Звіти до ДПС: зміни стану й звіти, завантажені в кабінеті. Квитанцію № 2 з ДПС
+         отримує ключ клієнта у вікні «Квитанції» — cron лише переносить те, що вже є в
+         кабінеті. Ходить лише за організаціями зі «Звітністю до ДПС». -->
+    <record id="ir_cron_aktiv_doc_report_sync" model="ir.cron">
+        <field name="name">Active Doc: звіти до ДПС — стан і квитанції</field>
+        <field name="model_id" ref="model_aktiv_doc_report"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_sync()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+
     <!-- STORE-CONVENTIONS §8: Odoo не питає магазин про нові версії сторонніх модулів. -->
     <record id="ir_cron_aktiv_doc_update_check" model="ir.cron">
         <field name="name">Active Doc: перевірити нову версію модуля</field>

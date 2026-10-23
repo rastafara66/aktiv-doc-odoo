@@ -24,6 +24,13 @@ class ResCompany(models.Model):
     aktiv_doc_cursor = fields.Char(
         "Мітка останньої синхронізації", groups="base.group_system", copy=False,
         help="Службове: з якого моменту питати Active Doc про зміни наступного разу.")
+    aktiv_doc_reports = fields.Boolean(
+        "Звітність до ДПС через Active Doc", readonly=True, copy=False,
+        help="Чи ввімкнено для організації в Active Doc подання звітів до ДПС (пілот). "
+             "Оновлюється кнопкою «Перевірити з'єднання» й першим «Надіслати до ДПС».")
+    aktiv_doc_report_cursor = fields.Char(
+        "Мітка синхронізації звітів", groups="base.group_system", copy=False,
+        help="Службове: з якого моменту питати Active Doc про зміни звітів наступного разу.")
     aktiv_doc_enabled = fields.Boolean(
         "Active Doc підключено", compute="_compute_aktiv_doc_enabled",
         help="Чи вставлено ключ API — без нього кнопки «Надіслати на підпис» немає.")
