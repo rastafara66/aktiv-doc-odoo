@@ -42,6 +42,7 @@ Active Doc (https://doc.aktiv.in.ua) — не виходячи з Odoo.
         'wizard/aktiv_doc_send_views.xml',
         'wizard/aktiv_doc_reject_views.xml',
         'views/aktiv_doc_document_views.xml',
+        'views/aktiv_doc_report_views.xml',
         'views/account_move_views.xml',
         'views/res_partner_views.xml',
         'views/res_config_settings_views.xml',

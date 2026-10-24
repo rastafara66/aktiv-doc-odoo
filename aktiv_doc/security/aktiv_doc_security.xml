@@ -6,4 +6,15 @@
         <field name="model_id" ref="model_aktiv_doc_document"/>
         <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
+    <!-- Звіти до ДПС — так само: лише своєї організації. -->
+    <record id="aktiv_doc_report_company_rule" model="ir.rule">
+        <field name="name">Active Doc: звіти до ДПС своєї організації</field>
+        <field name="model_id" ref="model_aktiv_doc_report"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="aktiv_doc_report_receipt_company_rule" model="ir.rule">
+        <field name="name">Active Doc: квитанції ДПС своєї організації</field>
+        <field name="model_id" ref="model_aktiv_doc_report_receipt"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
 </odoo>
