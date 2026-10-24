@@ -36,6 +36,11 @@ MONTHS_UK = ["січень", "лютий", "березень", "квітень",
 #: Сухо (§3). Серію дописує `news()` з маніфесту, тож у гілках 18.0 і 19.0 файл однаковий.
 #: Діапазон білдів — «1.0.0 – 1.0.2» (білд лише опису запису не додає, §3).
 NEWS = [
+    ("1.1.0", "October", 2026,
+     "Tax reports: a report package from Aktiv is signed and sent to the tax office in the "
+     "Active Doc window; status and receipts come back by themselves.",
+     "Звіти до ДПС: пакет звіту з «Актива» підписується й надсилається до ДПС у вікні "
+     "Active Doc; стан і квитанції повертаються самі."),
     ("1.0.0 – 1.0.4", "October", 2026,
      "First release: send for signature from invoices, signing inside Odoo, incoming "
      "documents, the signed archive on the invoice, an Active Doc column in the invoice "
@@ -117,6 +122,9 @@ EN = {
             "them, or reject with a reason the sender will see",
             "<b>Signed archive</b> &mdash; once both sides have signed, the document, every "
             "signature and the verification protocol are attached to the invoice",
+            "<b>Tax reports</b> &mdash; with the Aktiv modules, a VAT return or the combined "
+            "payroll return goes to the tax office from Odoo: signed in the same window, the "
+            "status and receipts come back by themselves",
         ]), ("How it is built", [
             "<b>Your key never reaches Odoo</b> &mdash; the key file and its password stay in "
             "the signing window; Odoo only learns that the document was signed",
@@ -191,6 +199,9 @@ UK = {
             "або відхилити з причиною, яку побачить відправник",
             "<b>Підписаний архів</b> — щойно підписали обидві сторони, документ, кожен "
             "підпис і протокол перевірки прикріплюються до рахунку",
+            "<b>Звіти до ДПС</b> — з модулями «Актив» декларація з ПДВ чи Об'єднана "
+            "звітність іде до ДПС з Odoo: підпис у тому самому вікні, стан і квитанції "
+            "повертаються самі",
         ]), ("Як він збудований", [
             "<b>Ваш ключ до Odoo не потрапляє</b> — файл ключа й пароль лишаються у вікні "
             "підпису; Odoo дізнається лише, що документ підписано",
