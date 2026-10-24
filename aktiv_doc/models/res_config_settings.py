@@ -39,6 +39,11 @@ class ResConfigSettings(models.TransientModel):
                            until=_(", діє до %s", plan["until"]) if plan.get("until") else ""))
         if org.get("signs_required") and org["signs_required"] > 1:
             lines.append(_("Документи організації підписують %s особи.", org["signs_required"]))
+        company.sudo().aktiv_doc_reports = bool(org.get("reports"))
+        lines.append(_("Звітність до ДПС через Active Doc: увімкнено — у звітах «Актива» "
+                       "працює кнопка «Надіслати до ДПС».") if org.get("reports") else
+                     _("Звітність до ДПС через Active Doc ще не ввімкнено (пілот) — щоб "
+                       "увімкнути, напишіть на info@aktiv.in.ua."))
         notice_type = "success"
         allowed = _origin_of(key.get("origin"))
         ours = _origin_of(self.env["ir.config_parameter"].sudo().get_param("web.base.url"))

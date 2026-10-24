@@ -6,4 +6,7 @@
               action="action_aktiv_doc_incoming" sequence="10"/>
     <menuitem id="menu_aktiv_doc_outgoing" name="Вихідні" parent="menu_aktiv_doc_root"
               action="action_aktiv_doc_outgoing" sequence="20"/>
+    <menuitem id="menu_aktiv_doc_reports" name="Звіти до ДПС" parent="menu_aktiv_doc_root"
+              action="action_aktiv_doc_reports" sequence="30"
+              groups="account.group_account_user"/>
 </odoo>
