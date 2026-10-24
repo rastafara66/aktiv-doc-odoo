@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="aktiv_doc_report_view_list" model="ir.ui.view">
+        <field name="name">aktiv.doc.report.list</field>
+        <field name="model">aktiv.doc.report</field>
+        <field name="arch" type="xml">
+            <list string="Звіти до ДПС" create="false"
+                  decoration-muted="state == 'draft'" decoration-success="state == 'accepted'"
+                  decoration-danger="state == 'rejected'">
+                <header>
+                    <button name="action_sync_now" type="object" string="Оновити зараз"
+                            display="always" class="btn-secondary"
+                            help="Забрати з Active Doc зміни стану звітів і квитанції, не чекаючи розкладу (він — кожні 5 хвилин)."/>
+                </header>
+                <field name="sent_at" string="Надіслано"/>
+                <field name="name"/>
+                <field name="form" optional="show"/>
+                <field name="period_label"/>
+                <field name="dps_id" optional="show"/>
+                <field name="reg_number" optional="show"/>
+                <field name="state_label"/>
+                <field name="state" column_invisible="True"/>
+                <field name="source_ref" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="aktiv_doc_report_view_form" model="ir.ui.view">
+        <field name="name">aktiv.doc.report.form</field>
+        <field name="model">aktiv.doc.report</field>
+        <field name="arch" type="xml">
+            <form string="Звіт до ДПС" create="false">
+                <header>
+                    <button name="action_send_window" type="object" string="Надіслати до ДПС"
+                            class="btn-primary" invisible="state != 'draft'"
+                            help="Відкрити вікно Active Doc тут же, в Odoo: оберіть ключ КЕП організації, перевірте звіт і надішліть його до ДПС. Ключ і пароль бачить лише вікно Active Doc."/>
+                    <button name="action_receipts_window" type="object" string="Квитанції"
+                            class="btn-primary" invisible="state != 'sent'"
+                            help="Отримати з кабінету ДПС квитанцію № 2 (прийнято чи ні, реєстраційний номер) — у вікні Active Doc вашим ключем."/>
+                    <button name="action_receipts_window" type="object" string="Квитанції"
+                            invisible="state not in ('accepted', 'rejected')"
+                            help="Ще раз забрати з кабінету ДПС квитанції й копію звіту (PDF)."/>
+                    <button name="action_refresh" type="object" string="Оновити"
+                            help="Перепитати Active Doc про стан звіту й квитанції зараз."/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,sent,accepted"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_source" type="object" class="oe_stat_button"
+                                icon="description" invisible="not source_ref"
+                                help="Відкрити звіт в Odoo, з якого надіслано (декларацію, Об'єднану…).">
+                            <span class="o_stat_text">Звіт в Odoo</span>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="True"/></h1>
+                        <div class="text-muted"><field name="state_label"/></div>
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="state != 'draft' or not dps_status">
+                        <strong>Остання спроба надіслати:</strong>
+                        <field name="dps_status" class="ms-1"/> —
+                        <field name="dps_text" class="d-inline"/>
+                        <div>Виправте звіт в Odoo й надішліть заново: «Надіслати до ДПС» у самому звіті.</div>
+                    </div>
+                    <group>
+                        <group string="Звіт">
+                            <field name="form"/>
+                            <field name="form_name"/>
+                            <field name="period_label"/>
+                            <field name="tin"/>
+                            <field name="doc_stan"/>
+                            <field name="source_ref"/>
+                        </group>
+                        <group string="ДПС">
+                            <field name="sent_at"/>
+                            <field name="dps_id"/>
+                            <field name="reg_number"/>
+                            <field name="reg_date"/>
+                            <field name="reg_status" invisible="not reg_status"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Квитанції" name="receipts">
+                            <field name="receipt_ids" readonly="True">
+                                <list string="Квитанції" create="false" delete="false"
+                                      decoration-warning="encrypted">
+                                    <field name="num"/>
+                                    <field name="name"/>
+                                    <field name="file_name" optional="show"/>
+                                    <field name="result"/>
+                                    <field name="reg_number" optional="show"/>
+                                    <field name="received"/>
+                                    <field name="encrypted" optional="show"/>
+                                    <field name="xml_attachment_id" column_invisible="True"/>
+                                    <field name="pdf_attachment_id" column_invisible="True"/>
+                                    <button name="action_download_xml" type="object" string="XML"
+                                            icon="download" invisible="not xml_attachment_id"
+                                            help="Завантажити квитанцію у форматі ДПС."/>
+                                    <button name="action_download_pdf" type="object" string="PDF"
+                                            icon="print" invisible="not pdf_attachment_id"
+                                            help="Завантажити PDF від ДПС — для друку."/>
+                                </list>
+                            </field>
+                            <div class="text-muted" invisible="state != 'sent'">
+                                Квитанція № 2 приходить від ДПС за кілька хвилин–годин. Забрати її —
+                                кнопкою «Квитанції»: розшифрувати її може лише ключ вашої організації.
+                            </div>
+                        </page>
+                        <page string="Файли" name="files">
+                            <field name="files_info" nolabel="1"/>
+                            <field name="file_ids" widget="many2many_binary" readonly="True"/>
+                        </page>
+                    </notebook>
+                    <group string="Службове" groups="base.group_no_one">
+                        <field name="adoc_id"/>
+                        <field name="adoc_changed"/>
+                        <field name="external_ref"/>
+                        <field name="package_sha"/>
+                        <field name="dps_status"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="aktiv_doc_report_view_search" model="ir.ui.view">
+        <field name="name">aktiv.doc.report.search</field>
+        <field name="model">aktiv.doc.report</field>
+        <field name="arch" type="xml">
+            <search string="Звіти до ДПС">
+                <field name="name"/>
+                <field name="form"/>
+                <field name="dps_id"/>
+                <field name="reg_number"/>
+                <filter name="draft" string="Не надіслано" domain="[('state', '=', 'draft')]"/>
+                <filter name="sent" string="Чекає квитанції № 2" domain="[('state', '=', 'sent')]"/>
+                <filter name="accepted" string="Прийнято" domain="[('state', '=', 'accepted')]"/>
+                <filter name="rejected" string="Не прийнято" domain="[('state', '=', 'rejected')]"/>
+                <filter name="by_state" string="Стан" context="{'group_by': 'state'}"/>
+                <filter name="by_form" string="Форма" context="{'group_by': 'form'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_aktiv_doc_reports" model="ir.actions.act_window">
+        <field name="name">Звіти до ДПС</field>
+        <field name="res_model">aktiv.doc.report</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Ще нічого не подавали до ДПС через Active Doc</p>
+            <p>Відкрийте звіт (наприклад, декларацію з ПДВ в «Активі») і натисніть «Надіслати до ДПС»:
+               звіт підписується КЕП вашої організації й іде до ДПС прямо з Odoo, а квитанції
+               повертаються сюди.</p>
+            <p>Подання звітів через Active Doc — пілот: для організації його вмикають на прохання,
+               пишіть на info@aktiv.in.ua. Чи ввімкнено — покаже «Перевірити з'єднання» в
+               Налаштуваннях: Виставлення рахунків → Active Doc.</p>
+        </field>
+    </record>
+
+</odoo>

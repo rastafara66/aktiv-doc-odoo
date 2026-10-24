@@ -4,7 +4,7 @@
     # (замір 06.09.2026: український опис знаходиться тільки кирилицею).
     'name': "Active Doc — підпис КЕП і обмін документами з контрагентами / "
             "Ukraine e-signature (KEP) and e-document exchange (EDI)",
-    'version': '20.0.1.0.4',
+    'version': '20.0.1.1.0',
     'summary': "Ukrainian qualified electronic signature (KEP) and e-document exchange "
                "(EDI) for Ukraine: sign invoices, acts and delivery notes and send them to "
                "counterparties without leaving Odoo. Рахунки, акти й накладні підписуються "
@@ -42,6 +42,7 @@ Active Doc (https://doc.aktiv.in.ua) — не виходячи з Odoo.
         'wizard/aktiv_doc_send_views.xml',
         'wizard/aktiv_doc_reject_views.xml',
         'views/aktiv_doc_document_views.xml',
+        'views/aktiv_doc_report_views.xml',
         'views/account_move_views.xml',
         'views/res_partner_views.xml',
         'views/res_config_settings_views.xml',

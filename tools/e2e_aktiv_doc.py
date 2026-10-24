@@ -138,7 +138,9 @@ class Session:
         if "error" in reply:
             raise RuntimeError((reply["error"].get("data") or {}).get("message")
                                or reply["error"].get("message"))
-        return reply["result"]
+        # Метод повернув None — Odoo не кладе `result` у відповідь узагалі (23.10.2026:
+        # `account.chart.template.try_loading` план завантажив, а перевірка впала на KeyError).
+        return reply.get("result")
 
     def call(self, model, method, *args, **kwargs):
         return self.rpc("/web/dataset/call_kw/%s/%s" % (model, method),
