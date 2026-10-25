@@ -5,6 +5,8 @@ https://doc.aktiv.in.ua → підпис тестовим ключем → «Н�
     python tools/e2e_reports.py                       # «Актив» — з теки ../aktiv поруч із репо
     python tools/e2e_reports.py --aktiv C:/Users/chukhin/Projects/aktiv-dps
     python tools/e2e_reports.py --keep                # базу не видаляти (для розбору)
+    python tools/e2e_reports.py --form fin --aktiv C:/Users/chukhin/Projects/aktiv-fin
+                                                      # фінзвітність малого S0110014 (S-форма)
 
 Тестова організація Active Doc «Тестова база «Актив Doc» А» (00000031): «Звітність до ДПС»
 увімкнено, і до ДПС вона НІЧОГО не надсилає — вікно складає й підписує справжні пакети, кабінет
@@ -21,6 +23,10 @@ https://doc.aktiv.in.ua → підпис тестовим ключем → «Н�
   3. підпис тестовим ключем, «Я перевірив…», «Підписати й надіслати» → вікно закрилось саме;
   4. звіт «Надіслано до ДПС» (TEST-…), два файли — головний і Д1; табличка над декларацією;
      запис реєстру подання — «Подано», файл = поданий головний документ.
+
+`--form fin` — те саме для фінзвітності малого підприємства S0110014 (S-форма «Єдиного вікна»,
+кабінет приймає з 19.0.0.24.0): проводка за I квартал → звіт «Обчислено» → один файл без
+додатків, форма S0110014; у реєстрі подання — коди органу статистики з файла.
 """
 import argparse
 import json
@@ -44,8 +50,38 @@ def make_db(aktiv):
                    stderr=subprocess.DEVNULL, timeout=3600)
 
 
-def setup(key):
-    """Організація А з ключем, план рахунків України, рахунок постачальника з ПДВ за вересень."""
+#: Що перевіряємо: модель звіту, дія меню, код форми в кабінеті, скільки файлів у пакеті.
+FORMS = {
+    "vat": {"model": "l10n_ua.vat.return", "action": "l10n_ua_aktiv.action_ua_vat_return",
+            "code": "J0200126", "files": 2, "label": "декларація з ПДВ"},
+    "fin": {"model": "l10n_ua.fin.report", "action": "l10n_ua_aktiv.action_l10n_ua_fin_report",
+            "code": "S0110014", "files": 1, "label": "фінзвітність малого підприємства"},
+}
+
+
+def setup_fin(s, company):
+    """Проводка «гроші ← дохід» за I квартал 2026 → фінзвітність «Обчислено» з кодами статистики."""
+    def account(prefix):
+        return s.call("account.account", "search", [("code", "=like", prefix + "%"),
+                                                     ("company_ids", "in", [company])], limit=1)[0]
+    journal = s.call("account.journal", "search", [("type", "=", "general"),
+                                                   ("company_id", "=", company)], limit=1)[0]
+    move = s.call("account.move", "create", {
+        "move_type": "entry", "date": "2026-02-10", "journal_id": journal, "line_ids": [
+            (0, 0, {"account_id": account("311"), "debit": 60000.0, "name": "Оплата (тест)"}),
+            (0, 0, {"account_id": account("701"), "credit": 60000.0, "name": "Оплата (тест)"})]})
+    s.call("account.move", "action_post", [move])
+    fin = s.call("l10n_ua.fin.report", "create", {
+        "company_id": company, "date_from": "2026-01-01", "date_to": "2026-03-31",
+        "stat_obl": "07", "stat_ray": "008", "boss_name": "Іван Тестовий",
+        "no_prev_year": True})
+    s.call("l10n_ua.fin.report", "action_compute", [fin])
+    return fin
+
+
+def setup(key, form="vat"):
+    """Організація А з ключем, план рахунків України, рахунок постачальника з ПДВ за вересень
+    (або, з `form="fin"`, фінзвітність за I квартал)."""
     s = base.Session(DB)
     company = s.call("res.users", "read", [2], ["company_id"])[0]["company_id"][0]
     registry = "company_registry" if s.call("res.partner", "fields_get", ["company_registry"]) \
@@ -63,6 +99,8 @@ def setup(key):
     s.call("res.users", "write", [2], {"lang": "uk_UA", "tz": "Europe/Kyiv"})
     # `try_loading` — метод записів (не @api.model): першим аргументом RPC — порожні ids.
     s.call("account.chart.template", "try_loading", [], "ua_psbo", company, install_demo=False)
+    if form == "fin":
+        return s, company, setup_fin(s, company)
     tax = s.call("account.tax", "search", [("type_tax_use", "=", "purchase"), ("amount", "=", 20),
                                            ("company_id", "=", company)], limit=1)
     vendor = s.call("res.partner", "create", {"name": "Постачальник (тест)", "is_company": True,
@@ -89,7 +127,10 @@ def main():
                     help="тека з модулями «Актива» (типово ../aktiv; гілка — її worktree)")
     ap.add_argument("--keep", action="store_true")
     ap.add_argument("--port", type=int, default=8075, choices=(8070, 8075))
+    ap.add_argument("--form", choices=sorted(FORMS), default="vat",
+                    help="який звіт подавати: vat — декларація з ПДВ + Д1, fin — S0110014")
     args = ap.parse_args()
+    form = FORMS[args.form]
     base.PORT, base.URL = args.port, "http://localhost:%d" % args.port
     # Перевіряємо САМЕ ці теки: Odoo бере модуль з першої теки шляху, де він є, а в
     # C:\odoo19\custom_addons лежать «Активи» основної гілки (23.10.2026 перший прогін так і
@@ -118,8 +159,8 @@ def main():
             if base.port_open(base.PORT):
                 break
             time.sleep(1)
-        s, company, vat = setup(key)
-        if not check(bool(s.call("l10n_ua.vat.return", "fields_get", ["dps_adoc_state"])),
+        s, company, vat = setup(key, args.form)
+        if not check(bool(s.call(form["model"], "fields_get", ["dps_adoc_state"])),
                      "«Актив» завантажено з %s (є «Надіслати до ДПС»)" % args.aktiv):
             raise RuntimeError("Odoo взяв «Актив» не з %s — дивіться порядок шляху модулів"
                                % args.aktiv)
@@ -127,29 +168,37 @@ def main():
                     s.call("res.config.settings", "create", {}))
         check("Звітність до ДПС через Active Doc: увімкнено" in me["params"]["message"],
               "«Перевірити з'єднання»: звітність до ДПС увімкнено")
-        s.call("l10n_ua.vat.return", "action_export_xml", [vat])
-        names = s.call("l10n_ua.vat.return", "read", [vat], ["xml_filename", "annex1_filename"])[0]
-        check(names["xml_filename"] and names["annex1_filename"],
-              "декларація з ПДВ: пакет із двох файлів — %s, %s"
-              % (names["xml_filename"], names["annex1_filename"]))
+        s.call(form["model"], "action_export_xml", [vat])
+        if args.form == "vat":
+            names = s.call(form["model"], "read", [vat], ["xml_filename", "annex1_filename"])[0]
+            check(names["xml_filename"] and names["annex1_filename"],
+                  "декларація з ПДВ: пакет із двох файлів — %s, %s"
+                  % (names["xml_filename"], names["annex1_filename"]))
+        else:
+            names = s.call(form["model"], "read", [vat], ["xml_filename", "xml_note"])[0]
+            check(len(names["xml_filename"] or "") == 41,
+                  "фінзвітність: один файл S-форми — %s (%s)" % (names["xml_filename"],
+                                                                  names["xml_note"] or "—"))
 
         from playwright.sync_api import sync_playwright
         pw = sync_playwright().start()
         try:
             browser = pw.chromium.launch()
-            print("1. Декларація з ПДВ → «Надіслати до ДПС» → вікно звітності")
+            print("1. %s → «Надіслати до ДПС» → вікно звітності" % form["label"].capitalize())
             ctx, page = base.login(browser, DB)
-            page.goto("%s/odoo/action-l10n_ua_aktiv.action_ua_vat_return/%d" % (base.URL, vat))
+            page.goto("%s/odoo/action-%s/%d" % (base.URL, form["action"], vat))
             page.locator(".o_form_sheet").wait_for(timeout=120000)
             page.get_by_role("button", name="Надіслати до ДПС").click()
             page.locator(".o_aktiv_doc_sign_frame").wait_for(timeout=120000)
             report = s.call("aktiv.doc.report", "search_read",
-                            [("source_ref", "=", "l10n_ua.vat.return,%d" % vat)],
+                            [("source_ref", "=", "%s,%d" % (form["model"], vat))],
                             fields=["id", "adoc_id", "state", "file_ids", "form"])
             check(len(report) == 1 and report[0]["state"] == "draft"
-                  and len(report[0]["file_ids"]) == 2 and report[0]["form"] == "J0200126",
-                  "звіт в Active Doc №%s — чернетка, два файли, форма J0200126 (кабінет прийняв "
-                  "пакет: LINKED_DOCS, назви, код платника)" % (report and report[0]["adoc_id"]))
+                  and len(report[0]["file_ids"]) == form["files"]
+                  and report[0]["form"] == form["code"],
+                  "звіт в Active Doc №%s — чернетка, файлів %d, форма %s (кабінет прийняв "
+                  "пакет: LINKED_DOCS, назви, код платника)" % (
+                      report and report[0]["adoc_id"], form["files"], form["code"]))
 
             print("2. Підпис тестовим ключем А і надсилання")
             frame = page.frame_locator(".o_aktiv_doc_sign_frame")
@@ -176,20 +225,23 @@ def main():
                   "вікно закрилось саме; «%s», номер %s (тестова — до ДПС не надсилала)"
                   % (got["state_label"], got["dps_id"]))
 
-            print("3. Стан над декларацією й реєстр подання")
+            print("3. Стан над звітом і реєстр подання")
             page.locator(".o_form_sheet").wait_for(timeout=60000)
             banner = page.locator(".alert", has_text="Подання до ДПС:")
             check(banner.count() >= 1 and "Надіслано до ДПС" in banner.first.inner_text(),
-                  "над декларацією — «Подання до ДПС: Надіслано до ДПС»")
+                  "над звітом — «Подання до ДПС: Надіслано до ДПС»")
             check(page.get_by_role("button", name="Надіслати до ДПС").count() == 0,
                   "кнопки «Надіслати до ДПС» більше немає — надіслане не надсилається вдруге")
             sub = s.call("l10n_ua.submission", "search_read",
-                         [("source_ref", "=", "l10n_ua.vat.return,%d" % vat)],
-                         fields=["state", "xml_filename", "submitted_on"])
+                         [("source_ref", "=", "%s,%d" % (form["model"], vat))],
+                         fields=["state", "xml_filename", "submitted_on", "c_raj"])
             check(len(sub) == 1 and sub[0]["state"] == "submitted"
                   and sub[0]["xml_filename"] == names["xml_filename"],
                   "реєстр подання: «Подано» %s, файл %s" % (
                       sub and sub[0]["submitted_on"], sub and sub[0]["xml_filename"]))
+            if args.form == "fin":
+                check(sub and sub[0]["c_raj"] == "008",
+                      "реєстр подання: код району — органу статистики з файла (008), не ДПІ")
             ctx.close()
             browser.close()
         except Exception:
