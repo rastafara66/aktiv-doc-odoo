@@ -8,3 +8,4 @@ from . import aktiv_doc_update
 from . import aktiv_doc_mixin
 from . import account_move
 from . import res_partner
+from . import res_users_tours

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Навчальні тури Odoo вимкнено всім, хто вже є в базі: при встановленні й при кожному
+         оновленні модуля (models/res_users_tours.py). -->
+    <function model="res.users" name="_aktiv_doc_tours_off"/>
+</odoo>

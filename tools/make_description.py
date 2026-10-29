@@ -36,11 +36,13 @@ MONTHS_UK = ["січень", "лютий", "березень", "квітень",
 #: Сухо (§3). Серію дописує `news()` з маніфесту, тож у гілках 18.0 і 19.0 файл однаковий.
 #: Діапазон білдів — «1.0.0 – 1.0.2» (білд лише опису запису не додає, §3).
 NEWS = [
-    ("1.1.0", "October", 2026,
+    ("1.1.0 – 1.1.1", "October", 2026,
      "Tax reports: a report package from Aktiv is signed and sent to the tax office in the "
-     "Active Doc window; status and receipts come back by themselves.",
+     "Active Doc window; status and receipts come back by themselves. Odoo onboarding tours "
+     "are switched off for all users.",
      "Звіти до ДПС: пакет звіту з «Актива» підписується й надсилається до ДПС у вікні "
-     "Active Doc; стан і квитанції повертаються самі."),
+     "Active Doc; стан і квитанції повертаються самі. Навчальні тури Odoo вимкнено для "
+     "всіх користувачів."),
     ("1.0.0 – 1.0.4", "October", 2026,
      "First release: send for signature from invoices, signing inside Odoo, incoming "
      "documents, the signed archive on the invoice, an Active Doc column in the invoice "
