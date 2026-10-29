@@ -4,7 +4,7 @@
     # (замір 06.09.2026: український опис знаходиться тільки кирилицею).
     'name': "Active Doc — підпис КЕП і обмін документами з контрагентами / "
             "Ukraine e-signature (KEP) and e-document exchange (EDI)",
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.1.1',
     'summary': "Ukrainian qualified electronic signature (KEP) and e-document exchange "
                "(EDI) for Ukraine: sign invoices, acts and delivery notes and send them to "
                "counterparties without leaving Odoo. Рахунки, акти й накладні підписуються "
@@ -34,8 +34,9 @@ Active Doc (https://doc.aktiv.in.ua) — не виходячи з Odoo.
     # 🔴 Лише штатні модулі: «Active Doc» — окремий безкоштовний товар, і
     # «Актив» / «Актив Pro» від нього НЕ залежать (правило надпроєкту: модулі
     # незалежні). Кнопка працює на будь-якому рахунку будь-якої бази.
-    'depends': ['account', 'mail'],
+    'depends': ['account', 'mail', 'web_tour'],
     'data': [
+        'data/tours_off.xml',
         'security/aktiv_doc_security.xml',
         'security/ir.model.access.csv',
         'data/ir_cron.xml',
